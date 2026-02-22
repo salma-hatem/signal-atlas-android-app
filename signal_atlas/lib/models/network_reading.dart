@@ -2,11 +2,10 @@
 This contains the class that represents all network readings from android API
 
 Variables:
-Device Infomration: Device ID, Location (Latitude, Longitude, Altitude), Timestamp
+Device Infomration: Device ID, Location (Latitude, Longitude, Altitude), Timestamp, Country, City
 Signal Strength: ASU Level, Level, RSRP, RSRQ, RSSI
 Network Information: Network Type, Operator Name, Physical Cell ID, Tracking Area Code
 
-Functions:
 */
 
 class NetworkReading {
@@ -55,6 +54,7 @@ class NetworkReading {
 
   String get latitudeFormatted => decimalToDegrees(latitude);
   String get longitudeFormatted => decimalToDegrees(longitude);
+  String get altitudeFormatted => altitude.toStringAsFixed(1);
   int get overallStrength => getSignalQuality(rsrp);
 
 

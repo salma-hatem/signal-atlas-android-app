@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:signal_atlas/widgets/shimmer_box.dart';
 
 class InfoTile extends StatelessWidget {
   final String title;
-  final String value;
+  final String? value;
   final IconData icon;
   final ColorScheme colorScheme;
 
@@ -21,12 +22,6 @@ class InfoTile extends StatelessWidget {
       decoration: BoxDecoration(
           color: colorScheme.surfaceContainer,
           borderRadius: BorderRadius.circular(16),
-          // border: Border(
-          //   left: BorderSide(
-          //     color: colorScheme.secondary,
-          //     width: 2,
-          //   ),
-          // )
 
       ),
       child: Column(
@@ -45,12 +40,14 @@ class InfoTile extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 2),
-          Text(
-            value,
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.w600,
-            ),
-          ),
+          value == null
+            ?shimmerBox(context, height: 12, width: 40)
+            : Text(
+                value!,
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
         ],
       ),
     );

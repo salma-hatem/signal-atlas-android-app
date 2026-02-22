@@ -8,7 +8,6 @@ class GeocodingService {
 
     if (placemarks.isNotEmpty) {
       final place = placemarks.first;
-      print("place $place");
       return {
         'city': (place.locality != null && place.locality!.isNotEmpty)
                 ? place.locality

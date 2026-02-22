@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:signal_atlas/widgets/shimmer_box.dart';
 
 class SignalKPICard extends StatelessWidget {
   final String title;
-  final int value;
+  final int? value;
   final String unit;
   final int rangeMin;
   final int rangeMax;
@@ -19,7 +20,8 @@ class SignalKPICard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    final normalizedValue = ((value - rangeMin) / (rangeMax - rangeMin)).clamp(0.0, 1.0);
+    final finalValue = value?? 0;
+    final normalizedValue = ((finalValue - rangeMin) / (rangeMax - rangeMin)).clamp(0.0, 1.0);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisAlignment: MainAxisAlignment.center,
@@ -28,7 +30,9 @@ class SignalKPICard extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(title, style: TextStyle(fontWeight: FontWeight.bold,)),
-            Text("$value $unit", style: TextStyle(color: colorScheme.onSurface)),
+            value == null
+                ?shimmerBox(context, height: 12, width: 20)
+                : Text("$value $unit", style: TextStyle(color: colorScheme.onSurface)),
           ],
         ),
         const SizedBox(height: 8),

@@ -8,6 +8,7 @@ import 'widgets/info_tile.dart';
 import 'package:signal_atlas/widgets/signle_accordion.dart';
 import 'package:signal_atlas/widgets/widget_tooltip.dart';
 import 'package:signal_atlas/widgets/custom_snackbar.dart';
+import 'package:signal_atlas/widgets/shimmer_box.dart';
 
 class LiveDataPage extends StatefulWidget {
   const LiveDataPage({
@@ -39,9 +40,6 @@ class _LiveDataPageState extends State<LiveDataPage> {
       body: Consumer<CurrentNetworkReadingProvider>(
         builder: (context, liveProvider, _) {
         final latestReading = liveProvider.latestReading;
-        if (latestReading == null) {
-          return const Center(child: CircularProgressIndicator());
-        }
           return SafeArea(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 24),
@@ -100,22 +98,23 @@ class _LiveDataPageState extends State<LiveDataPage> {
                                             Column(
                                               crossAxisAlignment: CrossAxisAlignment.start,
                                               children: [
-                                                Text(
-                                                  "${latestReading.country}, ${latestReading.city}",
-                                                  style: TextStyle(
-                                                    fontWeight: FontWeight.w600,
-                                                  ),
-                                                ),
-                                                SizedBox(height: 2),
-                                                Text(
-                                                  "${latestReading.longitudeFormatted},\t\t\t\t${latestReading.latitudeFormatted},\t\t\t\t${latestReading.altitude} m",
-                                                  style: TextStyle(
+                                                latestReading?.country == null || latestReading?.city == null
+                                                    ? shimmerBox(context, height: 20, width: 120)
+                                                    : Text("${latestReading?.country}, ${latestReading?.city}", style: TextStyle(fontWeight: FontWeight.w600)),
+                                                const SizedBox(height: 2),
+                                                latestReading?.longitudeFormatted == null
+                                                    || latestReading?.latitudeFormatted == null
+                                                    || latestReading?.altitudeFormatted == null
+                                                ? shimmerBox(context, height: 12, width: 200)
+                                                : Text(
+                                                    "${latestReading?.longitudeFormatted},\t\t\t\t${latestReading?.latitudeFormatted},\t\t\t\t${latestReading?.altitudeFormatted} m",
+                                                    style: TextStyle(
                                                     color: colorScheme.onSurfaceVariant,
-                                                    fontSize: 12,
-                                                  ),
+                                                      fontSize: 12,
+                                                    ),
                                                 ),
                                               ],
-                                            ),
+                                            )
                                           ],
                                         ),
                                       ),
@@ -129,14 +128,16 @@ class _LiveDataPageState extends State<LiveDataPage> {
                                           color: colorScheme.surfaceContainer,
                                           borderRadius: BorderRadius.circular(20),
                                         ),
-                                        child: Text(
-                                          latestReading.networkType,
-                                          style: TextStyle(
-                                            color: colorScheme.primary,
-                                            fontWeight: FontWeight.w600,
-                                            fontSize: 12,
+                                        child: latestReading?.networkType == null
+                                          ?shimmerBox(context, height: 12, width: 20)
+                                          : Text(
+                                            latestReading!.networkType,
+                                            style: TextStyle(
+                                              color: colorScheme.primary,
+                                              fontWeight: FontWeight.w600,
+                                              fontSize: 12,
+                                            ),
                                           ),
-                                        ),
                                       ),
                                     ],
                                   ),
@@ -153,8 +154,8 @@ class _LiveDataPageState extends State<LiveDataPage> {
                                         Expanded(
                                           child: MetricColumn(
                                             title: "Strength",
-                                            strength: latestReading.overallStrength,
-                                            value: latestReading.rsrp.toDouble(),
+                                            strength: latestReading?.overallStrength,
+                                            value: latestReading?.rsrp.toDouble(),
                                             units: "dBm",
                                           ),
                                         ),
@@ -167,8 +168,8 @@ class _LiveDataPageState extends State<LiveDataPage> {
                                         Expanded(
                                           child: MetricColumn(
                                             title: "Quality",
-                                            strength: latestReading.level,
-                                            value: latestReading.rsrq.toDouble(),
+                                            strength: latestReading?.level,
+                                            value: latestReading?.rsrq.toDouble(),
                                             units: "dB",
                                           ),
                                         ),
@@ -199,7 +200,7 @@ class _LiveDataPageState extends State<LiveDataPage> {
                                                 tooltip: "Reference Signal Received Power",
                                                 child: SignalKPICard(
                                                   title: "RSRP",
-                                                  value: latestReading.rsrp,
+                                                  value: latestReading?.rsrp,
                                                   unit: "dBm",
                                                   rangeMin: -140,
                                                   rangeMax: -43,
@@ -209,7 +210,7 @@ class _LiveDataPageState extends State<LiveDataPage> {
                                                 tooltip: "Reference Signal Srength Indication",
                                                 child: SignalKPICard(
                                                   title: "RSSI",
-                                                  value: latestReading.rssi,
+                                                  value: latestReading?.rssi,
                                                   unit: "dBm",
                                                   rangeMin: -113,
                                                   rangeMax: -51,
@@ -219,7 +220,7 @@ class _LiveDataPageState extends State<LiveDataPage> {
                                                 tooltip: "Reference Signal Received Quality",
                                                 child: SignalKPICard(
                                                   title: "RSRQ",
-                                                  value: latestReading.rsrq,
+                                                  value: latestReading?.rsrq,
                                                   unit: "dB",
                                                   rangeMin: -20,
                                                   rangeMax: -3,
@@ -229,10 +230,10 @@ class _LiveDataPageState extends State<LiveDataPage> {
                                                 tooltip: "RSRP in Arbitrary Signal Unit",
                                                 child: SignalKPICard(
                                                   title: "ASU",
-                                                  value: latestReading.asu,
+                                                  value: latestReading?.asu,
                                                   unit: "",
                                                   rangeMin: 0,
-                                                  rangeMax: 31,
+                                                  rangeMax: 97,
                                                 ),
                                               ),
                                             ]
@@ -268,12 +269,14 @@ class _LiveDataPageState extends State<LiveDataPage> {
                                       // ------------------------------------------------
                                       // Operator
                                       // ------------------------------------------------
-                                      Text(
-                                        latestReading.operatorName,
-                                        style: textTheme.titleMedium?.copyWith(
-                                          fontWeight: FontWeight.w600,
+                                      latestReading?.networkType == null
+                                        ?shimmerBox(context, height: 12, width: 200)
+                                        : Text(
+                                          latestReading!.operatorName,
+                                          style: textTheme.titleMedium?.copyWith(
+                                            fontWeight: FontWeight.w600,
+                                          ),
                                         ),
-                                      ),
                                     ],
                                   ),
                                   const SizedBox(height: 16),
@@ -286,7 +289,7 @@ class _LiveDataPageState extends State<LiveDataPage> {
                                       Expanded(
                                         child: InfoTile(
                                           title: "Physical Cell ID",
-                                          value: latestReading.physicalCellId.toString(),
+                                          value: latestReading?.physicalCellId.toString(),
                                           icon: Icons.settings_input_antenna,
                                           colorScheme: colorScheme,
                                         ),
@@ -295,7 +298,7 @@ class _LiveDataPageState extends State<LiveDataPage> {
                                       Expanded(
                                         child: InfoTile(
                                           title: "Tracking Area Code",
-                                          value: latestReading.trackingAreaCode.toString(),
+                                          value: latestReading?.trackingAreaCode.toString(),
                                           icon: Icons.map_outlined,
                                           colorScheme: colorScheme,
                                         ),
