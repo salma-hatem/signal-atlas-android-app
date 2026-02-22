@@ -2,6 +2,8 @@
 // It holds a list of NetworkReading and uses a Stream to notify provider(s) when new data is available
 
 import 'dart:async';
+import 'package:flutter/services.dart';
+import 'package:permission_handler/permission_handler.dart';
 import '../models/network_reading.dart';
 import '../services/geocoding_service.dart';
 
@@ -14,76 +16,67 @@ class NetworkReadingsService {
   final _readingController = StreamController<NetworkReading>.broadcast();
   Stream<NetworkReading> get readingStream => _readingController.stream;
 
+  static const _channel = MethodChannel('com.example.signal_atlas');
+
+  NetworkReadingsService() {
+    requestPermissions();
+    setupChannelListener();
+  }
+
+  // Set up channel for communication with Android (for data collecting using APIS)
+  void setupChannelListener() {
+    _channel.setMethodCallHandler((call) async {
+      if (call.method == 'newNetworkReading') {
+        final rawData = Map<String, dynamic>.from(call.arguments);
+        await addReadingFromRawData(rawData);
+
+      }
+    });
+  }
+
+  // Request permissions required by the data collecting APIs
+  Future<void> requestPermissions() async {
+    await [
+      Permission.location,
+      Permission.phone,
+    ].request();
+  }
+
   // Append list
   void addReading(NetworkReading reading) {
     _readings.add(reading);
   }
 
   // Add reading from Raw Data
-  Future<void> addReadingFromRawData({
-    required String deviceId,
-    required double latitude,
-    required double longitude,
-    required double altitude,
-    required DateTime timestamp,
-    required int level,
-    required int rsrp,
-    required int asu,
-    required int rssi,
-    required int rsrq,
-    required String networkType,
-    required String operatorName,
-    required int physicalCellId,
-    required int trackingAreaCode,
-  }) async {
+  Future<void> addReadingFromRawData(Map<String, dynamic> rawData) async {
 
     // Reverse geocode
-    final locationData = await GeocodingService.getCityCountry(latitude, longitude);
+    final locationData = await GeocodingService.getCityCountry(rawData["Latitude"], rawData["Longitude"]);
 
     // Create model
     final reading = NetworkReading(
-      deviceId: deviceId,
-      latitude: latitude,
-      longitude: longitude,
-      altitude: altitude,
+      deviceId: rawData["ID"],
+      latitude: rawData["Latitude"],
+      longitude: rawData["Longitude"],
+      altitude: rawData["Altitude"],
       city: locationData['city'],
       country: locationData['country'],
-      timestamp: timestamp,
-      level: level,
-      rsrp: rsrp,
-      asu: asu,
-      rssi: rssi,
-      rsrq: rsrq,
-      networkType: networkType,
-      operatorName: operatorName,
-      physicalCellId: physicalCellId,
-      trackingAreaCode: trackingAreaCode,
+      timestamp: DateTime.fromMillisecondsSinceEpoch(rawData["Timestamp"]),
+      level: rawData["Level"],
+      rsrp: rawData["RSRP"],
+      asu: rawData["ASU Level"],
+      rssi: rawData["RSSI"],
+      rsrq: rawData["RSRQ"],
+      networkType: rawData["NetworkType"],
+      operatorName: rawData["Operator"],
+      physicalCellId: rawData["PCI"],
+      trackingAreaCode: rawData["TAC"],
     );
 
     // Store it
     _readings.add(reading);
     // Add to stream
     _readingController.add(reading);
-  }
-
-  // for testing
-  NetworkReadingsService() {
-    addReadingFromRawData(
-      deviceId: "123456",
-      latitude: 10.5,
-      longitude: 30.5,
-      altitude: 100,
-      timestamp: DateTime.now(),
-      level: 2,
-      rsrp: -90,
-      asu: 20,
-      rssi: -70,
-      rsrq: -15,
-      networkType: "LTE",
-      operatorName: "Operator Name",
-      physicalCellId: 10,
-      trackingAreaCode: 12,
-    );
   }
 
 }
