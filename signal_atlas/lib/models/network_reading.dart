@@ -59,7 +59,7 @@ class NetworkReading {
 
 
   static String decimalToDegrees(double decimal) {
-    int degrees = decimal.floor();
+    int degrees = decimal.truncate();
     int minutes = ((decimal - degrees) * 60).floor();
     int seconds = (((decimal - degrees) * 60 - minutes) * 60).floor();
     return "$degrees° $minutes' $seconds''";
@@ -71,6 +71,46 @@ class NetworkReading {
     if (rsrp >= -105) return 2;
     if (rsrp >= -120) return 1;
     return 0;
+  }
+
+  // Factory Constructor: creates new object using
+  // parsed raw platform data after apply filtering
+  factory NetworkReading.fromRaw(Map<String, dynamic> raw) {
+    // Helper to safely parse numeric values
+    T parseValue<T extends num>(dynamic value, {T? min, T? max, T? defaultValue}) {
+      if (value == null) return defaultValue as T;
+        T? parsed;
+      if (value is T) {
+        parsed = value;
+      } else if (value is num) {
+        parsed = value.toDouble() as T;
+      } else if (value is String) {
+        parsed = T == int ? int.tryParse(value) as T? : double.tryParse(value) as T?;
+      }
+      if (parsed == null) return defaultValue as T;
+      if ((min != null && parsed < min) || (max != null && parsed > max)) return defaultValue as T;
+      return parsed;
+    }
+
+    return NetworkReading(
+      deviceId: raw['ID']?.toString() ?? 'Unknown',
+      latitude: parseValue<double>(raw['Latitude'], defaultValue: 0.0),
+      longitude: parseValue<double>(raw['Longitude'], defaultValue: 0.0),
+      altitude: parseValue<double>(raw['Altitude'], defaultValue: 0.0),
+      city: raw['city']?.toString(),
+      country: raw['country']?.toString(),
+      timestamp: DateTime.fromMillisecondsSinceEpoch(
+          raw['Timestamp'] ?? DateTime.now().millisecondsSinceEpoch),
+      level: parseValue<int>(raw['Level'], defaultValue: 0),
+      rsrp: parseValue<int>(raw['RSRP'], min: -140, max: -43, defaultValue: 0),
+      asu: parseValue<int>(raw['ASU Level'], min: 0, max: 255, defaultValue: 0),
+      rssi: parseValue<int>(raw['RSSI'], min: -113, max: -51, defaultValue: 0),
+      rsrq: parseValue<int>(raw['RSRQ'], defaultValue: 0),
+      networkType: raw['NetworkType']?.toString() ?? '-',
+      operatorName: raw['Operator']?.toString() ?? '-',
+      physicalCellId: parseValue<int>(raw['PCI'], defaultValue: 0),
+      trackingAreaCode: parseValue<int>(raw['TAC'], defaultValue: 0),
+    );
   }
 
 }
