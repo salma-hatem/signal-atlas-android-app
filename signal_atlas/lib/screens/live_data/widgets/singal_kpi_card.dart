@@ -21,7 +21,10 @@ class SignalKPICard extends StatelessWidget {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final finalValue = value?? 0;
-    final normalizedValue = ((finalValue - rangeMin) / (rangeMax - rangeMin)).clamp(0.0, 1.0);
+    double normalizedValue = 0;
+    if (finalValue >= rangeMin && finalValue <= rangeMax) {
+      normalizedValue = ((finalValue - rangeMin) / (rangeMax - rangeMin)).clamp(0.0, 1.0);
+    }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisAlignment: MainAxisAlignment.center,

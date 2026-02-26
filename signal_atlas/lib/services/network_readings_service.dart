@@ -53,25 +53,15 @@ class NetworkReadingsService {
     // Reverse geocode
     final locationData = await GeocodingService.getCityCountry(rawData["Latitude"], rawData["Longitude"]);
 
+    // Merge location info into rawData
+    final completeRawData = {
+      ...rawData, // existing raw fields
+      'city': locationData['city'],   // add city
+      'country': locationData['country'], // add country
+    };
+
     // Create model
-    final reading = NetworkReading(
-      deviceId: rawData["ID"],
-      latitude: rawData["Latitude"],
-      longitude: rawData["Longitude"],
-      altitude: rawData["Altitude"],
-      city: locationData['city'],
-      country: locationData['country'],
-      timestamp: DateTime.fromMillisecondsSinceEpoch(rawData["Timestamp"]),
-      level: rawData["Level"],
-      rsrp: rawData["RSRP"],
-      asu: rawData["ASU Level"],
-      rssi: rawData["RSSI"],
-      rsrq: rawData["RSRQ"],
-      networkType: rawData["NetworkType"],
-      operatorName: rawData["Operator"],
-      physicalCellId: rawData["PCI"],
-      trackingAreaCode: rawData["TAC"],
-    );
+    final reading = NetworkReading.fromRaw(completeRawData);
 
     // Store it
     _readings.add(reading);
