@@ -7,13 +7,13 @@ import '../models/network_reading.dart';
 import '../services/network_readings_service.dart';
 
 class CurrentNetworkReadingProvider extends ChangeNotifier {
-  final NetworkReadingsService _service = NetworkReadingsService();
+  final NetworkReadingsService _service;
   late final StreamSubscription _subscription;
 
   List<NetworkReading> get readings => _service.readings;
   NetworkReading? get latestReading => _service.latestReading;
 
-  CurrentNetworkReadingProvider() {
+  CurrentNetworkReadingProvider(this._service) {
     _subscription = _service.readingStream.listen((_) {
       notifyListeners();
     });
@@ -24,5 +24,4 @@ class CurrentNetworkReadingProvider extends ChangeNotifier {
     _subscription.cancel();
     super.dispose();
   }
-
 }
