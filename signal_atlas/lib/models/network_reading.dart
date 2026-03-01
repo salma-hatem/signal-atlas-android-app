@@ -113,4 +113,23 @@ class NetworkReading {
     );
   }
 
+  // Format for API payload
+  Map<String, dynamic> toApiPayload() {
+    return {
+      'deviceId': deviceId,
+      // 'timestamp': timestamp,
+      'latitude': latitude,
+      'longitude': longitude,
+      'level': level,
+      'asu': asu,
+      'rsrp': rsrp,
+      'rssi': rssi,
+      'rsrq': rsrq,
+      'networkType': networkType,
+      'operator': operatorName,
+      'physicalCellId': physicalCellId,
+      'trackingAreaCode': trackingAreaCode,
+    };
+  }
+
 }

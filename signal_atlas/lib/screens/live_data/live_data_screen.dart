@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:signal_atlas/providers/network_reading_provider.dart';
+import 'package:signal_atlas/providers/logging_provider.dart';
 
 import 'widgets/metric_column.dart';
 import 'widgets/singal_kpi_card.dart';
 import 'widgets/info_tile.dart';
+import 'widgets/health_button.dart';
 import 'package:signal_atlas/widgets/signle_accordion.dart';
 import 'package:signal_atlas/widgets/widget_tooltip.dart';
 import 'package:signal_atlas/widgets/custom_snackbar.dart';
@@ -20,22 +22,14 @@ class LiveDataPage extends StatefulWidget {
 }
 
 class _LiveDataPageState extends State<LiveDataPage> {
-  int strength = 3;
-  int quality = 4;
-  int asu = 0;
-  int rssi = 0;
-  int rsrq = 0;
-  int rsrp = 0;
-
-  String operator = "operator name";
-  int pci = 10;
-  int tac = 0;
-  bool isLoggingEnabled = false;
 
   @override
   Widget build(BuildContext context) {
     ColorScheme colorScheme = Theme.of(context).colorScheme;
     TextTheme textTheme = Theme.of(context).textTheme;
+
+    final isLoggingEnabled = context.watch<LoggingProvider>().isLogging;
+
     return Scaffold(
       body: Consumer<CurrentNetworkReadingProvider>(
         builder: (context, liveProvider, _) {
@@ -320,6 +314,12 @@ class _LiveDataPageState extends State<LiveDataPage> {
                   Row(
                     children: [
                       // ------------------------------------------------
+                      // Health
+                      // ------------------------------------------------
+                      HealthButton(),
+                      const SizedBox(width: 8),
+
+                      // ------------------------------------------------
                       // Logging
                       // ------------------------------------------------
                        Expanded(
@@ -342,13 +342,12 @@ class _LiveDataPageState extends State<LiveDataPage> {
                               padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
                             ),
                             onPressed: () {
-                              setState(() {
-                                isLoggingEnabled = !isLoggingEnabled;
-                              });
-                              if (isLoggingEnabled) {
-                                showCustomSnackBar(context,"Enabled logging to database");
+                              context.read<LoggingProvider>().toggleLogging();
+
+                              if (!isLoggingEnabled) {
+                                showCustomSnackBar(context, "Enabled logging to database");
                               } else {
-                                showCustomSnackBar(context,"Disabled logging");
+                                showCustomSnackBar(context, "Disabled logging");
                               }
                             },
                             icon: const Icon(Icons.terminal),
