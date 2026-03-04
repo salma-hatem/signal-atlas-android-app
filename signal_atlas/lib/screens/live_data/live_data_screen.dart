@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:signal_atlas/providers/network_reading_provider.dart';
 import 'package:signal_atlas/providers/logging_provider.dart';
+import '/utilities/timestamp_format.dart';
 
 import 'widgets/metric_column.dart';
 import 'widgets/singal_kpi_card.dart';
@@ -11,6 +12,7 @@ import 'package:signal_atlas/widgets/signle_accordion.dart';
 import 'package:signal_atlas/widgets/widget_tooltip.dart';
 import 'package:signal_atlas/widgets/custom_snackbar.dart';
 import 'package:signal_atlas/widgets/shimmer_box.dart';
+import 'package:signal_atlas/widgets/line_chart.dart';
 
 class LiveDataPage extends StatefulWidget {
   const LiveDataPage({
@@ -33,7 +35,24 @@ class _LiveDataPageState extends State<LiveDataPage> {
     return Scaffold(
       body: Consumer<CurrentNetworkReadingProvider>(
         builder: (context, liveProvider, _) {
-        final latestReading = liveProvider.latestReading;
+          final latestReading = liveProvider.latestReading;
+          final readings = liveProvider.readings;
+
+          final xData = <double>[];
+          final rsrpPoints = <int>[];
+          final rsrqPoints = <int>[];
+
+          if (readings.isNotEmpty) {
+            final firstTimestamp = readings.first.timestamp;
+
+            xData.addAll(
+              readings.map((r) =>
+                  getRelativeSeconds(r.timestamp, firstTimestamp)),
+            );
+
+            rsrpPoints.addAll(readings.map((r) => r.rsrp));
+            rsrqPoints.addAll(readings.map((r) => r.rsrq));
+          }
           return SafeArea(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 24),
@@ -302,7 +321,52 @@ class _LiveDataPageState extends State<LiveDataPage> {
                                 ],
                               ),
                             ),
-                          )
+                          ),
+
+                          // ------------------------------------------------
+                          // Line Chart Card
+                          // ------------------------------------------------
+                          Card(
+                            child: Padding(
+                              padding: const EdgeInsets.all(16),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Icon(
+                                        Icons.show_chart,
+                                        color: colorScheme.primary,
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        "Network KPIs Over Time",
+                                        style: textTheme.titleMedium?.copyWith(
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 12),
+                                  CustomLineChart(
+                                    data: [
+                                      ChartData(points: rsrpPoints, name: "RSRP (dBm)", color: colorScheme.primary),
+                                      ChartData(points: rsrqPoints, name: "RSRQ (dBm)", color: colorScheme.secondary),
+                                    ],
+                                    xData: xData,
+                                    dualYAxis: true,
+                                    aspectRatio: 1.6,
+                                    xLabel: "Time (since app start)",
+                                    xTicks: 5,
+                                    leftYAxisUnit: "dBm",
+                                    rightYAxisUnit: "dB",
+                                    xLabelFormatter: formatSeconds,
+                                  )
+                                ],
+                              ),
+                            ),
+                          ),
+
                         ],
                       ),
                     ),
