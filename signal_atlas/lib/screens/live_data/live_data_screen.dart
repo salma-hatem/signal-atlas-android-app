@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:signal_atlas/providers/network_reading_provider.dart';
 import 'package:signal_atlas/providers/logging_provider.dart';
+import '../../utilities/signal_thresholds.dart';
 import '/utilities/timestamp_format.dart';
 import '/utilities/theme/app_colors.dart';
 
@@ -216,8 +217,8 @@ class _LiveDataPageState extends State<LiveDataPage> {
                                                   title: "RSRP",
                                                   value: latestReading?.rsrp,
                                                   unit: "dBm",
-                                                  rangeMin: -140,
-                                                  rangeMax: -43,
+                                                  rangeMin: SignalThresholds.kpiRanges['RSRP']!.min,
+                                                  rangeMax: SignalThresholds.kpiRanges['RSRP']!.max,
                                                 ),
                                               ),
                                               WidgetTooltip (
@@ -226,8 +227,8 @@ class _LiveDataPageState extends State<LiveDataPage> {
                                                   title: "RSSI",
                                                   value: latestReading?.rssi,
                                                   unit: "dBm",
-                                                  rangeMin: -113,
-                                                  rangeMax: -51,
+                                                  rangeMin: SignalThresholds.kpiRanges['RSSI']!.min,
+                                                  rangeMax: SignalThresholds.kpiRanges['RSSI']!.max,
                                                 ),
                                               ),
                                               WidgetTooltip (
@@ -236,8 +237,8 @@ class _LiveDataPageState extends State<LiveDataPage> {
                                                   title: "RSRQ",
                                                   value: latestReading?.rsrq,
                                                   unit: "dB",
-                                                  rangeMin: -20,
-                                                  rangeMax: -3,
+                                                  rangeMin: SignalThresholds.kpiRanges['RSRQ']!.min,
+                                                  rangeMax: SignalThresholds.kpiRanges['RSRQ']!.max,
                                                 ),
                                               ),
                                               WidgetTooltip (
@@ -246,8 +247,8 @@ class _LiveDataPageState extends State<LiveDataPage> {
                                                   title: "ASU",
                                                   value: latestReading?.asu,
                                                   unit: "",
-                                                  rangeMin: 0,
-                                                  rangeMax: 97,
+                                                  rangeMin: SignalThresholds.kpiRanges['ASU']!.min,
+                                                  rangeMax: SignalThresholds.kpiRanges['ASU']!.max,
                                                 ),
                                               ),
                                             ]
