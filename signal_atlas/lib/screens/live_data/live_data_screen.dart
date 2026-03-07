@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:signal_atlas/providers/network_reading_provider.dart';
 import 'package:signal_atlas/providers/logging_provider.dart';
 import '/utilities/timestamp_format.dart';
+import '/utilities/theme/app_colors.dart';
 
 import 'widgets/metric_column.dart';
 import 'widgets/singal_kpi_card.dart';
@@ -350,8 +351,16 @@ class _LiveDataPageState extends State<LiveDataPage> {
                                   const SizedBox(height: 12),
                                   CustomLineChart(
                                     data: [
-                                      ChartData(points: rsrpPoints, name: "RSRP (dBm)", color: colorScheme.primary),
-                                      ChartData(points: rsrqPoints, name: "RSRQ (dBm)", color: colorScheme.secondary),
+                                      ChartData(
+                                        points: rsrpPoints,
+                                        name: "RSRP (dBm)",
+                                        color: AppColors.chartColor(0,colorScheme)
+                                      ),
+                                      ChartData(
+                                        points: rsrqPoints,
+                                        name: "RSRQ (dBm)",
+                                        color: AppColors.chartColor(1, colorScheme)
+                                      ),
                                     ],
                                     xData: xData,
                                     dualYAxis: true,

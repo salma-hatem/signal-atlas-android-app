@@ -7,6 +7,7 @@ Signal Strength: ASU Level, Level, RSRP, RSRQ, RSSI
 Network Information: Network Type, Operator Name, Physical Cell ID, Tracking Area Code
 
 */
+import 'package:signal_atlas/utilities/signal_thresholds.dart';
 
 class NetworkReading {
   // Metadata
@@ -55,7 +56,7 @@ class NetworkReading {
   String get latitudeFormatted => decimalToDegrees(latitude);
   String get longitudeFormatted => decimalToDegrees(longitude);
   String get altitudeFormatted => altitude.toStringAsFixed(1);
-  int get overallStrength => getSignalQuality(rsrp);
+  int get overallStrength => SignalThresholds.rsrpStrengthLevel(rsrp);
 
 
   static String decimalToDegrees(double decimal) {
@@ -65,13 +66,6 @@ class NetworkReading {
     return "$degrees° $minutes' $seconds''";
   }
 
-  int getSignalQuality(int rsrp) {
-    if (rsrp >= -85) return 4;
-    if (rsrp >= -95) return 3;
-    if (rsrp >= -105) return 2;
-    if (rsrp >= -120) return 1;
-    return 0;
-  }
 
   // Factory Constructor: creates new object using
   // parsed raw platform data after apply filtering

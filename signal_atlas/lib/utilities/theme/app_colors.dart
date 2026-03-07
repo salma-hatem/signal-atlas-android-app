@@ -42,4 +42,52 @@ class AppColors {
   // Common
   static const Color outline = Color(0xFFB0B3C6);
   static const Color shadow = Colors.black54;
+
+
+  // Maps
+  static const Map<int, Color> signalStrengthLight = {
+    0: Color(0xFFD9534F),
+    1: Color(0xFFEB6E6A),
+    2: Color(0xFFEB7F5C),
+    3: Color(0xFF6CC070),
+    4: Color(0xFF6D9EEB),
+  };
+
+  static const Map<int, Color> signalStrengthDark = {
+    0: Color(0xFFC15B5B),
+    1: Color(0xFFCD6B6B),
+    2: Color(0xFFFFA85C),
+    3: Color(0xFF6CC070),
+    4: Color(0xFF8FB4FF),
+  };
+
+  static const Map<int, Color> chartColorsLight = {
+    0 : primary,
+    1: Color(0xFF6CC070),
+  };
+
+  static const Map<int, Color> chartColorsDark = {
+    0: darkPrimary,
+    1: Color(0xFF6CC070),
+  };
+
+  static Color chartColor(int index, ColorScheme scheme) {
+    final isDark = scheme.brightness == Brightness.dark;
+    final map = isDark ? chartColorsDark : chartColorsLight;
+    return map[index] ?? scheme.primary;
+  }
+
+
+  static Color strengthColor(int strength, ColorScheme scheme) {
+    final isDark = scheme.brightness == Brightness.dark;
+    final map = isDark ? signalStrengthDark : signalStrengthLight;
+    return map[strength] ?? scheme.primary;
+  }
+
+  static Color normalizedProgress(double value, ColorScheme scheme) {
+    if (value <= 0.25) return strengthColor(1, scheme);
+    if (value <= 0.5) return strengthColor(2, scheme);
+    if (value <= 0.75) return strengthColor(3, scheme);
+    return scheme.primary;
+  }
 }

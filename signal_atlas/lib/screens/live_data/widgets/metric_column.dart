@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'signal_bars.dart';
+import 'package:signal_atlas/utilities/theme/app_colors.dart';
+import 'package:signal_atlas/utilities/signal_thresholds.dart';
 import 'package:signal_atlas/widgets/shimmer_box.dart';
 
 class MetricColumn extends StatelessWidget {
@@ -36,16 +38,16 @@ class MetricColumn extends StatelessWidget {
                 Row (
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(getText(strengthValue),
+                    Text(SignalThresholds.label(strengthValue),
                       style: TextStyle(
-                        color: getColor(strengthValue, colorScheme),
+                        color: AppColors.strengthColor(strengthValue, colorScheme),
                         fontSize: 20,
                       ),
                     ),
                     // Signal Bar
                     SignalBars (
                       strength: strengthValue,
-                      color: getColor(strengthValue, colorScheme),
+                      color: AppColors.strengthColor(strengthValue, colorScheme),
                     )
                   ],
                 ),
@@ -61,18 +63,4 @@ class MetricColumn extends StatelessWidget {
         ]
     );
   }
-
-  Color getColor(int strength, ColorScheme scheme) {
-    if (strength <= 1) return Colors.red;
-    if (strength == 2) return Colors.orange;
-    if (strength == 3) return Colors.lightGreen;
-    return scheme.primary;
-  }
-  String getText(int strength) {
-    if (strength <= 0) return "No Signal";
-    if (strength == 1) return "Poor";
-    if (strength == 2) return "Fair";
-    if (strength == 3) return "Good";
-    return "Excellent";
-  } // not sure what to write
 }

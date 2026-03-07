@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:signal_atlas/widgets/shimmer_box.dart';
+import 'package:signal_atlas/utilities/theme/app_colors.dart';
 
 class SignalKPICard extends StatelessWidget {
   final String title;
@@ -54,7 +55,7 @@ class SignalKPICard extends StatelessWidget {
                 child: LinearProgressIndicator(
                   value: normalizedValue,
                   backgroundColor: colorScheme.outline.withAlpha(100),
-                  color: getColor(normalizedValue, colorScheme),
+                  color: AppColors.normalizedProgress(normalizedValue, colorScheme),
                 ),
               ),
             ),
