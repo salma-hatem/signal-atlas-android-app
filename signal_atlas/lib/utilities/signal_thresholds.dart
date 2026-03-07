@@ -20,4 +20,18 @@ class SignalThresholds {
     if (strength == 3) return "Good";
     return "Excellent";
   }
+
+  static const Map<String, MetricRange> kpiRanges = {
+    'RSRP': MetricRange(-140, -43),
+    'RSRQ': MetricRange(-20, -3),
+    'RSSI': MetricRange(-113, -51),
+    'ASU': MetricRange(0, 97),
+  };
+}
+
+class MetricRange {
+  final int min;
+  final int max;
+
+  const MetricRange(this.min, this.max);
 }

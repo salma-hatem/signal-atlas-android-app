@@ -85,6 +85,10 @@ class NetworkReading {
       if ((min != null && parsed < min) || (max != null && parsed > max)) return defaultValue as T;
       return parsed;
     }
+    final rsrpRange = SignalThresholds.kpiRanges['RSRP']!;
+    final rsrqRange = SignalThresholds.kpiRanges['RSRQ']!;
+    final asuRange = SignalThresholds.kpiRanges['ASU']!;
+    final rssiRange = SignalThresholds.kpiRanges['RSSI']!;
 
     return NetworkReading(
       deviceId: raw['ID']?.toString() ?? 'Unknown',
@@ -96,10 +100,30 @@ class NetworkReading {
       timestamp: DateTime.fromMillisecondsSinceEpoch(
           raw['Timestamp'] ?? DateTime.now().millisecondsSinceEpoch),
       level: parseValue<int>(raw['Level'], defaultValue: 0),
-      rsrp: parseValue<int>(raw['RSRP'], min: -140, max: -43, defaultValue: 0),
-      asu: parseValue<int>(raw['ASU Level'], min: 0, max: 255, defaultValue: 0),
-      rssi: parseValue<int>(raw['RSSI'], min: -113, max: -51, defaultValue: 0),
-      rsrq: parseValue<int>(raw['RSRQ'], defaultValue: 0),
+      rsrp: parseValue<int>(
+          raw['RSRP'],
+          min: rsrpRange.min,
+          max: rsrpRange.max,
+          defaultValue: 0,
+      ),
+      asu: parseValue<int>(
+          raw['ASU Level'],
+          min: asuRange.min,
+          max: asuRange.max,
+          defaultValue: 0
+      ),
+      rssi: parseValue<int>(
+          raw['RSSI'],
+          min: rssiRange.min,
+          max: rssiRange.max,
+          defaultValue: 0
+      ),
+      rsrq: parseValue<int>(
+          raw['RSRQ'],
+          min: rsrqRange.min,
+          max: rsrqRange.max,
+          defaultValue: 0
+      ),
       networkType: raw['NetworkType']?.toString() ?? '-',
       operatorName: raw['Operator']?.toString() ?? '-',
       physicalCellId: parseValue<int>(raw['PCI'], defaultValue: 0),
