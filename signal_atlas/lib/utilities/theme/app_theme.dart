@@ -30,10 +30,10 @@ class AppTheme {
       onTertiaryContainer: AppColors.lightText,
 
       // Error
-      error: AppColors.error,
+      error: AppColors.lightError,
       onError: Colors.white,
       errorContainer: Color(0xFFFCDCDC),
-      onErrorContainer: Color(0xFF410002),
+      onErrorContainer: Color(0xFFD9534F),
 
       // Surfaces
       background: AppColors.lightBackground,
@@ -83,9 +83,9 @@ class AppTheme {
       onTertiaryContainer: AppColors.darkText,
 
       // Error
-      error: AppColors.error,
+      error: AppColors.darkError,
       onError: Colors.black,
-      errorContainer: Color(0xFF93000A),
+      errorContainer: Color(0xFFCD6B6B),
       onErrorContainer: Color(0xFFFFDAD6),
 
       // Surfaces
@@ -97,10 +97,10 @@ class AppTheme {
       onSurfaceVariant: Color(0xFFC4C6D0),
 
       // Dark purple-tinted surfaces
-      surfaceContainerLow: Color(0xFF25262F),
-      surfaceContainer: Color(0xFF2E303A),
-      surfaceContainerHigh: Color(0xFF383A46),
-      surfaceContainerHighest: Color(0xFF424452),
+      surfaceContainerLow: Color(0xFF2B2F38),
+      surfaceContainer: Color(0xFF373B45),
+      surfaceContainerHigh: Color(0xFF424651),
+      surfaceContainerHighest: Color(0xFF4D515D),
 
       // Misc
       outline: Color(0xFF8E9099),
