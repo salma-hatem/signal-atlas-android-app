@@ -4,14 +4,18 @@ import '../models/network_reading.dart';
 import '../utilities//constants.dart';
 
 class ApiService {
-  static final baseUrl = ApiConfig.baseUrl;
+  static final baseUrl = ApiConfig.baseUrl; 
+  static const _headers = {
+    'Content-Type': 'application/json',
+    'X-API-Key': ApiConfig.apiKey,
+  };
 
   // Sending data using POST
   static Future<bool> sendReading(NetworkReading reading) async {
     try {
       final response = await http.post(
         Uri.parse('$baseUrl/api/network-data'),
-        headers: {'Content-Type': 'application/json'},
+        headers: _headers,
         body: jsonEncode(reading.toApiPayload()),
       );
       return response.statusCode == 200 || response.statusCode == 201;
@@ -31,7 +35,7 @@ class ApiService {
     try {
       final response = await http.post(
         Uri.parse('$baseUrl/api/network-data/batch'),
-        headers: {'Content-Type': 'application/json'},
+        headers: _headers,
         body: jsonEncode(payload),
       );
 
@@ -51,7 +55,10 @@ class ApiService {
   // Health-check function
   static Future<bool> checkHealth() async {
     try {
-      final response = await http.get(Uri.parse('$baseUrl/health'));
+      final response = await http.get(
+        Uri.parse('$baseUrl/health'),
+        headers: _headers,
+      );
       print('Health check response status: ${response.statusCode} on server $baseUrl/health');
       return response.statusCode == 200;
     } catch (e) {
