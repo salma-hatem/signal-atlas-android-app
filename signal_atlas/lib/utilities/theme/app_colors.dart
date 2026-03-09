@@ -90,4 +90,40 @@ class AppColors {
     if (value <= 0.75) return strengthColor(3, scheme);
     return scheme.primary;
   }
+  static MaterialColor createMaterialColor(Color color) {
+    return MaterialColor(color.value, {
+      50: color,
+      100: color,
+      200: color,
+      300: color,
+      400: color,
+      500: color,
+      600: color,
+      700: color,
+      800: color,
+      900: color,
+    });
+  }
+
+  static Map<double, Color> heatmapLightGradient = {
+    0.0: Color(0xFFE6F0FF), // very pale blue
+    0.25: Color(0xFF99C2FF), // light blue
+    0.5: Color(0xFF4D91FF), // medium blue
+    0.75: Color(0xFFFFD966), // yellow-orange
+    1.0: Color(0xFFFF8C42), // bright orange
+  };
+  static Map<double, Color> heatmapDarkGradient = {
+    0.0: Color(0xFF1E1F24), // near black background
+    0.25: Color(0xFF4444FF), // medium blue
+    0.5: Color(0xFF6A6AFF), // bright blue
+    0.75: Color(0xFFBFA83D), // warm amber, muted but visible
+    1.0: Color(0xFFDA6B33), // deep orange, clearly high intensity
+  };
+
+  static Map<double, MaterialColor> heatmapGradient(ColorScheme scheme) {
+    final isDark = scheme.brightness == Brightness.dark;
+    final map = isDark ? heatmapDarkGradient : heatmapLightGradient;
+    return map.map((key, value) => MapEntry(key, createMaterialColor(value)));
+  }
+
 }
