@@ -81,6 +81,11 @@ class _CoverageMapState extends State<CoverageMap> {
               markersAlwaysVisible: _markersAlwaysVisible,
               colorScheme: colorScheme,
             ),
+            MarkerLayer(
+              markers: [
+                userLocationMarker(_initialCenter, colorScheme.primary, colorScheme.onPrimary),
+              ]
+            ),
           ],
         ),
         // ------------------------------------------------
@@ -92,7 +97,7 @@ class _CoverageMapState extends State<CoverageMap> {
           child: buildMapButton(
             icon: Icons.gps_fixed,
             tooltip: "Reset location",
-            onPressed: () => _mapController.move(_initialCenter, 16),
+            onPressed: () => _mapController.moveAndRotate(_initialCenter, 16,0),
             colorScheme: colorScheme,
           ),
         ),
@@ -117,17 +122,50 @@ class _CoverageMapState extends State<CoverageMap> {
     );
   }
 
+  Marker userLocationMarker(LatLng position, Color color, Color borderColor) {
+    return Marker(
+      point: position,
+      width: 40,
+      height: 40,
+      alignment: Alignment.bottomCenter,
+      child: Builder(
+        builder: (context) {
+          final rotation = MapCamera.of(context).rotationRad;
+
+          return Transform.rotate(
+            angle: -rotation,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                Icon(
+                  Icons.location_pin,
+                  size: 40,
+                  color: borderColor,
+                ),
+                Icon(
+                  Icons.location_pin,
+                  size: 32,
+                  color: color,
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
   void _addTestSamples() {
     final rand = Random();
 
-    const sampleCount = 150;
+    const sampleCount = 3000;
     const spread = 0.005;
 
     for (int i = 0; i < sampleCount; i++) {
       final lat = _initialCenter.latitude + (rand.nextDouble() * spread - spread / 2);
       final lng = _initialCenter.longitude + (rand.nextDouble() * spread - spread / 2);
 
-      final weight = rand.nextDouble(); // fully random color
+      final weight = pow(rand.nextDouble(), 2).toDouble(); // raw weight
 
       _heatData.add(
         WeightedLatLng(
@@ -139,4 +177,5 @@ class _CoverageMapState extends State<CoverageMap> {
 
     setState(() {});
   }
+
 }

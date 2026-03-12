@@ -11,6 +11,7 @@ class HeatmapOverlay extends StatelessWidget {
   final ColorScheme colorScheme;
 
   const HeatmapOverlay({
+    super.key,
     required this.heatData,
     required this.zoom,
     required this.markersAlwaysVisible,
@@ -22,17 +23,41 @@ class HeatmapOverlay extends StatelessWidget {
     if (heatData.isEmpty) return const SizedBox.shrink();
 
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final sortedHeatData = [...heatData]..sort((a, b) => (a.intensity ?? 0).compareTo(b.intensity ?? 0));
+    final markerSize = markerSizeFromZoom(zoom);
     return Stack(
       children: [
         Opacity(
           opacity: (zoom < 18) ? 1.0 : ((zoom >= 19) ? 0.0 : (19 - zoom) / 2),
-          child: HeatMapLayer(
-            heatMapDataSource: InMemoryHeatMapDataSource(data: heatData),
-            heatMapOptions: HeatMapOptions(
-              radius: 40,
-              minOpacity: isDark ? 0.85 : 0.65,
-              gradient: AppColors.heatmapGradient(colorScheme),
-            ),
+          child: Opacity(
+            opacity: isDark ? 0.55 : 0.35,
+            child: MarkerLayer(
+              markers: sortedHeatData.map((point) {
+                final value = point.intensity ?? 0;
+
+                final color = AppColors.heatmapGradient(colorScheme)
+                    .entries
+                    .lastWhere((e) => value >= e.key)
+                    .value;
+
+                return Marker(
+                  width: markerSize,
+                  height: markerSize,
+                  point: point.latLng,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: RadialGradient(
+                        colors: [
+                          color.withAlpha(200),
+                          color.withAlpha(0),
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+              }).toList(),
+            )
           ),
         ),
         Opacity(
@@ -64,5 +89,21 @@ class HeatmapOverlay extends StatelessWidget {
         ),
       ],
     );
+  }
+
+  double markerSizeFromZoom(double zoom) {
+    const minZoom = 16.0;
+    const maxZoom = 20.0;
+
+    const minSize = 20.0;
+    const maxSize = 80.0;
+
+    // normalize zoom to 0..1
+    double t = ((zoom - minZoom) / (maxZoom - minZoom)).clamp(0.0, 1.0);
+
+    // smooth curve (easeOut)
+    t = 1 - (1 - t) * (1 - t);
+
+    return minSize + (maxSize - minSize) * t;
   }
 }
