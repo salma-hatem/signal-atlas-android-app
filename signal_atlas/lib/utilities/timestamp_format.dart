@@ -54,3 +54,32 @@ String formatSeconds(double seconds) {
   final secs = (seconds % 60).toInt();
   return '${mins}m ${secs}s';
 }
+
+// Get Date from Timestamp
+String getDateFromTimestamp(int timestamp, String period) {
+  final date = DateTime.fromMillisecondsSinceEpoch(timestamp);
+
+  switch (period) {
+    case "Past 24h":
+      final minute = date.minute.toString().padLeft(2, '0');
+      return "${date.hour}";
+
+    case "Past week":
+      const days = [
+        "Mon",
+        "Tue",
+        "Wed",
+        "Thu",
+        "Fri",
+        "Sat",
+        "Sun"
+      ];
+      return days[date.weekday - 1];
+
+    case "Past month":
+      return date.day.toString();
+
+    default:
+      return date.toString();
+  }
+}

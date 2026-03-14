@@ -20,7 +20,10 @@ class HeatmapOverlay extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    print("Heatmap $heatData");
     if (heatData.isEmpty) return const SizedBox.shrink();
+
+    final gradient = AppColors.heatmapGradient(colorScheme);
 
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final sortedHeatData = [...heatData]..sort((a, b) => (a.intensity ?? 0).compareTo(b.intensity ?? 0));
@@ -35,9 +38,11 @@ class HeatmapOverlay extends StatelessWidget {
               markers: sortedHeatData.map((point) {
                 final value = point.intensity ?? 0;
 
-                final color = AppColors.heatmapGradient(colorScheme)
-                    .entries
-                    .lastWhere((e) => value >= e.key)
+                final color = gradient.entries
+                    .lastWhere(
+                      (e) => value >= e.key,
+                  orElse: () => gradient.entries.first,
+                )
                     .value;
 
                 return Marker(
