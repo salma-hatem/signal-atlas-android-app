@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/cupertino.dart';
 import 'package:http/http.dart' as http;
 import '../models/network_reading.dart';
 import '../utilities//constants.dart';
@@ -20,7 +21,7 @@ class ApiService {
       );
       return response.statusCode == 200 || response.statusCode == 201;
     } catch (e) {
-      print('Upload failed: $e');
+      debugPrint('Upload failed: $e');
       return false;
     }
   }
@@ -29,8 +30,6 @@ class ApiService {
   static Future<Map<String, dynamic>> sendBatch(List<NetworkReading> readings) async {
     final jsonList = readings.map((r) => r.toApiPayload()).toList();
     final payload = {"readings": jsonList};
-
-    print("sending batch: ${jsonEncode(payload)}");
 
     try {
       final response = await http.post(
@@ -47,7 +46,7 @@ class ApiService {
         throw Exception('Server error: ${response.statusCode}');
       }
     } catch (e) {
-      print('Error sending batch: $e');
+      debugPrint('Error sending batch: $e');
       rethrow;
     }
   }
@@ -59,12 +58,29 @@ class ApiService {
         Uri.parse('$baseUrl/health'),
         headers: _headers,
       );
-      print('Health check response status: ${response.statusCode} on server $baseUrl/health');
+      debugPrint('Health check response status: ${response.statusCode} on server $baseUrl/health');
       return response.statusCode == 200;
     } catch (e) {
-      print('Health check error: $e');
+      debugPrint('Health check error: $e');
       return false;
     }
   }
 
+  // GET function
+  static Future<dynamic> get(String path, {Map<String, dynamic>? query,}) async {
+
+    final uri = Uri.parse("$baseUrl$path").replace(
+      queryParameters: query?.map(
+            (key, value) => MapEntry(key, value.toString()),
+      ),
+    );
+
+    final response = await http.get(uri, headers: _headers);
+
+    if (response.statusCode != 200) {
+      throw Exception("API error");
+    }
+
+    return jsonDecode(response.body);
+  }
 }

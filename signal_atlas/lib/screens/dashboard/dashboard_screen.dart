@@ -2,8 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import 'package:signal_atlas/providers/network_reading_provider.dart';
-import '/models/network_reading.dart';
+import 'package:signal_atlas/providers/dashboard_provider.dart';
 import '/utilities/theme/app_colors.dart';
+import '/utilities/timestamp_format.dart';
 
 import 'package:signal_atlas/widgets/line_chart.dart';
 import 'widgets/data_filters_widgets.dart';
@@ -11,48 +12,45 @@ import 'widgets/coverage_map.dart';
 import 'widgets/stats_card.dart';
 
 class DashboardPage extends StatefulWidget {
-  const DashboardPage({
-    super.key,
-  });
+  const DashboardPage({Key? key}) : super(key: key);
 
   @override
   State<DashboardPage> createState() => _DashboardPageState();
+
 }
 
 class _DashboardPageState extends State<DashboardPage> {
   bool _mapEnabled = false; // to prevent accidentally panning map while scrolling
+  bool _initialized = false;
 
-  NetworkReading? _initialReading;
-  String selectedKPI = "RSRP";
-  String selectedOperator = "Orange";
-  String selectedPeriod = "Past 24h";
-  bool showPredictedData = false;
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
 
-  List<String> kpiList = [
-    "RSRP",
-    "RSRQ",
-  ];
-  List<String> operatorList = [
-    "Vodafone",
-    "Orange",
-    "Etisalat",
-  ];
-  List<String> periodList = [
-    "Past 24h",
-    "Past week",
-    "Past month",
-  ];
+    if (!_initialized) {
+      final provider = Provider.of<CurrentNetworkReadingProvider>(context, listen: false);
+      final reading = provider.latestReading;
+      if (reading != null) {
+        final dashboard = context.read<DashboardProvider>();
+        dashboard.setReading(reading);
+        dashboard.initializeDashboard();
+        _initialized = true;
+      } else {
+        provider.addListener(_onReadingUpdated);
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     ColorScheme colorScheme = Theme.of(context).colorScheme;
     TextTheme textTheme = Theme.of(context).textTheme;
 
-    final provider = Provider.of<CurrentNetworkReadingProvider>(context);
-    if(_initialReading == null) {
-      _initialReading = provider.latestReading;
-      print("updating readings");
-    }
+    final dashboard = context.watch<DashboardProvider>();
+    final xData = dashboard.trendPoints.map((p) => p.timeMs).toList();
+    final rsrpPoints = dashboard.trendPoints.map((p) => p.rsrp).toList();
+    final rsrqPoints = dashboard.trendPoints.map((p) => p.rsrq).toList();
+
 
     return Scaffold(
           body: SafeArea(
@@ -98,17 +96,20 @@ class _DashboardPageState extends State<DashboardPage> {
                               // Filters
                               // ------------------------------------------------
                               DataFilters(
-                                operatorList: operatorList,
-                                selectedOperator: selectedOperator,
-                                onOperatorChanged: (value) => setState(() => selectedOperator = value),
-                                showPredictedData: showPredictedData,
-                                onPredictionChanged: (value) => setState(() => showPredictedData = value),
-                                periodList: periodList,
-                                selectedPeriod: selectedPeriod,
-                                onPeriodChanged: (value) => setState(() => selectedPeriod = value),
-                                kpiList: kpiList,
-                                selectedKPI: selectedKPI,
-                                onKPIChanged: (value) => setState(() => selectedKPI = value),
+                                operatorList: dashboard.operatorList,
+                                selectedOperator: dashboard.selectedOperator,
+                                onOperatorChanged: dashboard.updateOperator,
+
+                                showPredictedData: dashboard.showPredictedData,
+                                onPredictionChanged: dashboard.updatePrediction,
+
+                                periodList: dashboard.periodList,
+                                selectedPeriod: dashboard.selectedPeriod,
+                                onPeriodChanged: dashboard.updatePeriod,
+
+                                kpiList: dashboard.kpiList,
+                                selectedKPI: dashboard.selectedKPI,
+                                onKPIChanged: dashboard.updateKPI,
                               ),
                               SizedBox(height: 12),
                               // ------------------------------------------------
@@ -152,16 +153,18 @@ class _DashboardPageState extends State<DashboardPage> {
                                                 Expanded(
                                                   child: StatsCard(
                                                       title: "Mean RSRP",
-                                                      value: -100,
+                                                      value: dashboard.meanRSRP,
                                                       units: "dBm",
+                                                      decimalPlaces: 2,
                                                   ),
                                                 ),
                                                 SizedBox(width: 12),
                                                 Expanded(
                                                   child: StatsCard(
                                                       title: "Mean RSRQ",
-                                                      value: -14,
+                                                      value: dashboard.meanRSRQ,
                                                       units: "dB",
+                                                      decimalPlaces: 2,
                                                   ),
                                                 ),
                                               ],
@@ -178,16 +181,18 @@ class _DashboardPageState extends State<DashboardPage> {
                                                 Expanded(
                                                   child: StatsCard(
                                                       title: "Coverage Quality",
-                                                      value: 60,
+                                                      value: dashboard.coverage,
                                                       units: "%",
+                                                      decimalPlaces: 2,
                                                   ),
                                                 ),
                                                 SizedBox(width: 12),
                                                 Expanded(
                                                   child: StatsCard(
                                                       title: "Measurements Count",
-                                                      value: 1500,
+                                                      value: dashboard.measurementsCount?.toDouble(),
                                                       units: "",
+                                                      decimalPlaces: 0,
                                                   ),
                                                 ),
                                               ],
@@ -261,10 +266,11 @@ class _DashboardPageState extends State<DashboardPage> {
                                                   ignoring: !_mapEnabled,
                                                   child: SizedBox(
                                                     height: 400,
-                                                    child: _initialReading == null
+                                                    child: dashboard.reading == null
                                                         ? Center(child: CircularProgressIndicator())
                                                         : CoverageMap(
-                                                      initialReading: _initialReading!,
+                                                          initialReading: dashboard.reading!,
+                                                          heatData: dashboard.weightedLatLngPoints,
                                                     ),
                                                   ),
                                                 ),
@@ -325,28 +331,52 @@ class _DashboardPageState extends State<DashboardPage> {
                                       // ------------------------------------------------
                                       CustomLineChart(
                                         data: [
-                                          ChartData(points: [], name: "RSRP (dBm)", color: AppColors.chartColor(0,colorScheme)),
+                                          ChartData(
+                                            points: rsrpPoints,
+                                            name: "RSRP",
+                                            color: AppColors.chartColor(0,colorScheme),
+                                          ),
+                                          ChartData(
+                                              points: rsrqPoints,
+                                              name: "RSRQ",
+                                              color: AppColors.chartColor(1,colorScheme)
+                                          ),
                                         ],
-                                        xData: [],
+                                        dualYAxis: true,
+                                        xData: xData,
                                         aspectRatio: 1.6,
                                         title: "Mean RSRP over time",
                                         xLabel: "Time",
-                                        xTicks: 5,
                                         legend: false,
+                                        xLabelFormatter: (value) =>
+                                            getDateFromTimestamp(
+                                              value.toInt(),
+                                              dashboard.selectedPeriod,
+                                              // maxTimestamp: xData.last.toInt(),
+                                            ),
                                       ),
                                       // ------------------------------------------------
                                       // RSRQ Chart
                                       // ------------------------------------------------
                                       CustomLineChart(
                                         data: [
-                                          ChartData(points: [], name: "RSRQ (dB)", color: AppColors.chartColor(1,colorScheme)),
+                                          ChartData(
+                                            points: rsrqPoints,
+                                            name: "RSRQ",
+                                            color: AppColors.chartColor(1,colorScheme)
+                                          ),
                                         ],
-                                        xData: [],
+                                        xData: xData,
                                         aspectRatio: 1.6,
                                         title: "Mean RSRQ over time",
                                         xLabel: "Time",
-                                        xTicks: 5,
                                         legend: false,
+                                        xLabelFormatter: (value) =>
+                                            getDateFromTimestamp(
+                                              value.toInt(),
+                                              dashboard.selectedPeriod,
+                                              // maxTimestamp: xData.last.toInt(),
+                                            ),
                                       ),
 
                                     ],
@@ -365,5 +395,17 @@ class _DashboardPageState extends State<DashboardPage> {
           ),
         ),
     );
+  }
+  void _onReadingUpdated() {
+    final provider = Provider.of<CurrentNetworkReadingProvider>(context, listen: false);
+    final reading = provider.latestReading;
+    if (reading != null) {
+      final dashboard = context.read<DashboardProvider>();
+      dashboard.setReading(reading);
+      dashboard.initializeDashboard();
+      provider.removeListener(_onReadingUpdated);
+      _initialized = true;
+      setState(() {});
+    }
   }
 }

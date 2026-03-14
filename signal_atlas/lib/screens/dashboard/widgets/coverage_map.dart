@@ -12,10 +12,12 @@ import 'map_filters.dart';
 
 class CoverageMap extends StatefulWidget {
   final NetworkReading initialReading;
+  final List<WeightedLatLng> heatData;
 
   const CoverageMap({
     super.key,
     required this.initialReading,
+    required this.heatData,
   });
 
   @override
@@ -24,7 +26,6 @@ class CoverageMap extends StatefulWidget {
 
 class _CoverageMapState extends State<CoverageMap> {
   final MapController _mapController = MapController();
-  final List<WeightedLatLng> _heatData = [];
   late final LatLng _initialCenter;
   bool _markersAlwaysVisible = false;
 
@@ -36,9 +37,6 @@ class _CoverageMapState extends State<CoverageMap> {
       widget.initialReading.latitude,
       widget.initialReading.longitude,
     );
-
-    _addTestSamples();
-
   }
   double _zoom = 16;
 
@@ -60,7 +58,6 @@ class _CoverageMapState extends State<CoverageMap> {
             onMapEvent: (event) {
               setState(() {
                 _zoom = _mapController.camera.zoom;
-                print(_heatData.length);
               });
             },
           ),
@@ -76,7 +73,7 @@ class _CoverageMapState extends State<CoverageMap> {
               ),
             ),
             HeatmapOverlay(
-              heatData: _heatData,
+              heatData: widget.heatData,
               zoom: _zoom,
               markersAlwaysVisible: _markersAlwaysVisible,
               colorScheme: colorScheme,
@@ -154,28 +151,4 @@ class _CoverageMapState extends State<CoverageMap> {
       ),
     );
   }
-
-  void _addTestSamples() {
-    final rand = Random();
-
-    const sampleCount = 3000;
-    const spread = 0.005;
-
-    for (int i = 0; i < sampleCount; i++) {
-      final lat = _initialCenter.latitude + (rand.nextDouble() * spread - spread / 2);
-      final lng = _initialCenter.longitude + (rand.nextDouble() * spread - spread / 2);
-
-      final weight = pow(rand.nextDouble(), 2).toDouble(); // raw weight
-
-      _heatData.add(
-        WeightedLatLng(
-          LatLng(lat, lng),
-          weight,
-        ),
-      );
-    }
-
-    setState(() {});
-  }
-
 }

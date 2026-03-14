@@ -3,14 +3,16 @@ import 'package:signal_atlas/widgets/shimmer_box.dart';
 
 class StatsCard extends StatelessWidget {
   final String title;
-  final int? value;
+  final double? value;
   final String units;
+  final int decimalPlaces;
 
   const StatsCard({
     super.key,
     required this.title,
     required this.value,
     required this.units,
+    required this.decimalPlaces,
   });
 
   @override
@@ -40,7 +42,7 @@ class StatsCard extends StatelessWidget {
               value == null
                   ?shimmerBox(context, height: 24, width: 40)
                   : Text(
-                  "$value",
+                  "${value?.toStringAsFixed(decimalPlaces)}",
                   style: Theme.of(context).textTheme.titleLarge
                 ),
               const SizedBox(width: 4),

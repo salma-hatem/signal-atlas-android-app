@@ -27,6 +27,14 @@ class SignalThresholds {
     'RSSI': MetricRange(-113, -51),
     'ASU': MetricRange(0, 97),
   };
+
+  static double normalize(String metric, int value) {
+    final range = kpiRanges[metric];
+    if (range == null) return 0;
+
+    final clamped = value.clamp(range.min, range.max);
+    return (clamped - range.min) / (range.max - range.min);
+  }
 }
 
 class MetricRange {
