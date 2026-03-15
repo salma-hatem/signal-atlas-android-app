@@ -354,22 +354,22 @@ class _LiveDataPageState extends State<LiveDataPage> {
                                     data: [
                                       ChartData(
                                         points: rsrpPoints,
-                                        name: "RSRP (dBm)",
+                                        name: "RSRP",
                                         color: AppColors.chartColor(0,colorScheme)
                                       ),
                                       ChartData(
                                         points: rsrqPoints,
-                                        name: "RSRQ (dBm)",
+                                        name: "RSRQ",
                                         color: AppColors.chartColor(1, colorScheme)
                                       ),
                                     ],
                                     xData: xData,
                                     dualYAxis: true,
-                                    aspectRatio: 1.6,
+                                    aspectRatio: 1.3,
                                     xLabel: "Time (since app start)",
                                     xTicks: 5,
-                                    leftYAxisUnit: "dBm",
-                                    rightYAxisUnit: "dB",
+                                    leftYAxisUnits: "dBm",
+                                    rightYAxisUnits: "dB",
                                     xLabelFormatter: formatSeconds,
                                   )
                                 ],

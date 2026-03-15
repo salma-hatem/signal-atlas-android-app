@@ -336,15 +336,11 @@ class _DashboardPageState extends State<DashboardPage> {
                                             name: "RSRP",
                                             color: AppColors.chartColor(0,colorScheme),
                                           ),
-                                          ChartData(
-                                              points: rsrqPoints,
-                                              name: "RSRQ",
-                                              color: AppColors.chartColor(1,colorScheme)
-                                          ),
                                         ],
-                                        dualYAxis: true,
                                         xData: xData,
                                         aspectRatio: 1.6,
+                                        leftYAxisUnits: "dBm",
+                                        xAxisUnits: dashboard.timeUnits,
                                         title: "Mean RSRP over time",
                                         xLabel: "Time",
                                         legend: false,
@@ -352,8 +348,8 @@ class _DashboardPageState extends State<DashboardPage> {
                                             getDateFromTimestamp(
                                               value.toInt(),
                                               dashboard.selectedPeriod,
-                                              // maxTimestamp: xData.last.toInt(),
                                             ),
+                                        showXInTooltip: true,
                                       ),
                                       // ------------------------------------------------
                                       // RSRQ Chart
@@ -361,24 +357,25 @@ class _DashboardPageState extends State<DashboardPage> {
                                       CustomLineChart(
                                         data: [
                                           ChartData(
-                                            points: rsrqPoints,
-                                            name: "RSRQ",
-                                            color: AppColors.chartColor(1,colorScheme)
+                                              points: rsrqPoints,
+                                              name: "RSRQ",
+                                              color: AppColors.chartColor(1,colorScheme)
                                           ),
                                         ],
                                         xData: xData,
                                         aspectRatio: 1.6,
                                         title: "Mean RSRQ over time",
                                         xLabel: "Time",
+                                        xAxisUnits: dashboard.timeUnits,
+                                        leftYAxisUnits: "dB",
                                         legend: false,
                                         xLabelFormatter: (value) =>
                                             getDateFromTimestamp(
                                               value.toInt(),
                                               dashboard.selectedPeriod,
-                                              // maxTimestamp: xData.last.toInt(),
                                             ),
+                                        showXInTooltip: true,
                                       ),
-
                                     ],
                                   ),
                                 ),
