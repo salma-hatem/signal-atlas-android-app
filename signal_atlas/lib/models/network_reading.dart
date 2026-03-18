@@ -134,10 +134,13 @@ class NetworkReading {
   // Format for API payload
   Map<String, dynamic> toApiPayload() {
     return {
-      'deviceId': deviceId,
-      // 'timestamp': timestamp,
+      'source': deviceId,
+      'timestamp': timestamp.toUtc().toIso8601String(),
       'latitude': latitude,
       'longitude': longitude,
+      'altitude': altitude,
+      'country': country,
+      'city': city,
       'level': level,
       'asu': asu,
       'rsrp': rsrp,
