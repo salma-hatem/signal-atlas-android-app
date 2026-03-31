@@ -17,6 +17,7 @@ class CustomNavigationBar extends StatelessWidget {
     final tabs = [
       {'icon': Icons.wifi_tethering, 'label': 'Live Data'},
       {'icon': Icons.analytics_outlined, 'label': 'Dashboard'},
+      {'icon': Icons.storage, 'label': 'Data Hub'},
     ];
 
     return Material(

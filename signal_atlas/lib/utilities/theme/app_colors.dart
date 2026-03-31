@@ -43,6 +43,22 @@ class AppColors {
   static const Color outline = Color(0xFFB0B3C6);
   static const Color shadow = Colors.black54;
 
+  // Server status
+  static const Color lightServerOnline = Color(0xFF6CC070);   // green
+  static const Color lightServerOffline = Color(0xFFD9534F);  // red
+
+  static const Color darkServerOnline = Color(0xFF81C784);    // softer green
+  static const Color darkServerOffline = Color(0xFFE57373);   // softer red
+
+  static Color serverStatusColor(bool isOnline, ColorScheme scheme) {
+    final isDark = scheme.brightness == Brightness.dark;
+
+    if (isOnline) {
+      return isDark ? darkServerOnline : lightServerOnline;
+    } else {
+      return isDark ? darkServerOffline : lightServerOffline;
+    }
+  }
 
   // Maps
   static const Map<int, Color> signalStrengthLight = {
