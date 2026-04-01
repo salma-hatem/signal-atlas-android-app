@@ -8,26 +8,34 @@ import android.location.LocationManager;
 import android.os.Build;
 import android.provider.Settings;
 import android.telephony.*;
+
 import androidx.annotation.NonNull;
 import androidx.core.app.ActivityCompat;
+
 import io.flutter.embedding.android.FlutterActivity;
 import io.flutter.embedding.engine.FlutterEngine;
 import io.flutter.plugin.common.MethodChannel;
+
 import com.google.android.gms.location.*;
 
 import java.util.*;
-import java.util.Timer;
-import java.util.TimerTask;
 
 public class MainActivity extends FlutterActivity {
+
     private static final String CHANNEL = "com.example.signal_atlas";
+
     private MethodChannel channel;
     private Timer timer;
 
     private TelephonyManager telephonyManager;
     private FusedLocationProviderClient fusedLocationClient;
+    
+    private boolean isRunning = false;
+    private long lastLocationRequestTime = 0;
 
-    // Create connection channel with Flutter to continously send data
+    private Double lastLat = null, lastLng = null, lastAlt = null;
+
+    // Create connection channel with Flutter to send data
     @Override
     public void configureFlutterEngine(@NonNull FlutterEngine flutterEngine) {
         super.configureFlutterEngine(flutterEngine);
@@ -47,11 +55,14 @@ public class MainActivity extends FlutterActivity {
             public void run() {
                 runOnUiThread(() -> collectData());
             }
-        }, 0, 2000);
+        }, 0, 2500);
     }
 
     // Get data using TelephonyManager and Location APIs
     private void collectData() {
+        if (isRunning) return;
+        isRunning = true;
+
         Map<String, Object> data = new HashMap<>();
 
         // Device info
@@ -61,28 +72,30 @@ public class MainActivity extends FlutterActivity {
 
         // Operator info
         data.put("Operator", telephonyManager.getNetworkOperatorName());
+
         int networkType = (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R)
                 ? telephonyManager.getDataNetworkType()
                 : telephonyManager.getNetworkType();
+
         data.put("NetworkType", getNetworkTypeName(networkType));
 
-        // Permissions check
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.READ_PHONE_STATE) != PackageManager.PERMISSION_GRANTED) {
-            data.put("error", "Phone permission not granted");
+        // Permissions
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.READ_PHONE_STATE) != PackageManager.PERMISSION_GRANTED ||
+                ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+
+            data.put("error", "Permissions not granted");
             invokeChannelSafe(data);
-            return;
-        }
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            data.put("error", "Location permission not granted");
-            invokeChannelSafe(data);
+            isRunning = false;
             return;
         }
 
-        // Cell info
+        // Cell Info
         try {
             List<CellInfo> cellInfos = telephonyManager.getAllCellInfo();
+
             if (cellInfos != null && !cellInfos.isEmpty()) {
                 for (CellInfo cellInfo : cellInfos) {
+
                     CellSignalStrength strength = null;
                     CellIdentity identity = null;
 
@@ -91,11 +104,13 @@ public class MainActivity extends FlutterActivity {
                         strength = lte.getCellSignalStrength();
                         identity = lte.getCellIdentity();
                         data.put("Type", "LTE");
+
                     } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && cellInfo instanceof CellInfoNr) {
                         CellInfoNr nr = (CellInfoNr) cellInfo;
                         strength = nr.getCellSignalStrength();
                         identity = nr.getCellIdentity();
                         data.put("Type", "5G");
+
                     } else if (cellInfo instanceof CellInfoGsm) {
                         CellInfoGsm gsm = (CellInfoGsm) cellInfo;
                         strength = gsm.getCellSignalStrength();
@@ -107,7 +122,6 @@ public class MainActivity extends FlutterActivity {
                         data.put("Level", strength.getLevel());
                         data.put("ASU Level", strength.getAsuLevel());
 
-                        // LTE RSRP / RSRQ / RSSI
                         if (strength instanceof CellSignalStrengthLte && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                             CellSignalStrengthLte lteSignal = (CellSignalStrengthLte) strength;
                             data.put("RSRP", lteSignal.getRsrp());
@@ -115,19 +129,18 @@ public class MainActivity extends FlutterActivity {
                             data.put("RSSI", lteSignal.getRssi());
                         }
 
-                        // 5G NR RSRP / RSRQ
                         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && strength instanceof CellSignalStrengthNr) {
                             CellSignalStrengthNr nrSignal = (CellSignalStrengthNr) strength;
                             data.put("RSRP", nrSignal.getCsiRsrp());
                             data.put("RSRQ", nrSignal.getCsiRsrq());
                         }
 
-                        // Identity info
                         if (identity instanceof CellIdentityLte) {
                             CellIdentityLte lteId = (CellIdentityLte) identity;
                             data.put("Cell ID", lteId.getCi());
                             data.put("TAC", lteId.getTac());
                             data.put("PCI", lteId.getPci());
+
                         } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && identity instanceof CellIdentityNr) {
                             CellIdentityNr nrId = (CellIdentityNr) identity;
                             data.put("Cell ID", nrId.getNci());
@@ -137,6 +150,7 @@ public class MainActivity extends FlutterActivity {
                     }
                 }
             }
+
         } catch (Exception e) {
             data.put("cellInfoError", e.toString());
         }
@@ -147,59 +161,63 @@ public class MainActivity extends FlutterActivity {
 
     // Get device current location (lon, lat, alt)
     private void getLocationAndSend(Map<String, Object> data) {
+
         if (!isLocationEnabled()) {
-            data.put("Latitude", null);
-            data.put("Longitude", null);
-            data.put("Altitude", null);
-            invokeChannelSafe(data);
+            sendWithCachedLocation(data);
             return;
         }
 
-        // Fallback: use last location but request current if null
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) { // API 31+
+        long now = System.currentTimeMillis();
+
+        // throttle GPS requests (every 5 sec)
+        if (now - lastLocationRequestTime < 5000) {
+            sendWithCachedLocation(data);
+            return;
+        }
+
+        lastLocationRequestTime = now;
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             fusedLocationClient.getCurrentLocation(
                     LocationRequest.PRIORITY_HIGH_ACCURACY,
                     null
             ).addOnSuccessListener(location -> {
+
                 if (location != null) {
-                    data.put("Latitude", location.getLatitude());
-                    data.put("Longitude", location.getLongitude());
-                    data.put("Altitude", location.hasAltitude() ? location.getAltitude() : null);
-                } else {
-                    data.put("Latitude", null);
-                    data.put("Longitude", null);
-                    data.put("Altitude", null);
+                    lastLat = location.getLatitude();
+                    lastLng = location.getLongitude();
+                    lastAlt = location.hasAltitude() ? location.getAltitude() : null;
                 }
-                invokeChannelSafe(data);
-            }).addOnFailureListener(e -> {
-                data.put("Latitude", null);
-                data.put("Longitude", null);
-                data.put("Altitude", null);
-                invokeChannelSafe(data);
-            });
+
+                sendWithCachedLocation(data);
+
+            }).addOnFailureListener(e -> sendWithCachedLocation(data));
+
         } else {
-            // For older devices, fallback to getLastLocation() but may be null
             fusedLocationClient.getLastLocation()
                     .addOnSuccessListener(location -> {
+
                         if (location != null) {
-                            data.put("Latitude", location.getLatitude());
-                            data.put("Longitude", location.getLongitude());
-                            data.put("Altitude", location.hasAltitude() ? location.getAltitude() : null);
-                        } else {
-                            data.put("Latitude", null);
-                            data.put("Longitude", null);
-                            data.put("Altitude", null);
+                            lastLat = location.getLatitude();
+                            lastLng = location.getLongitude();
+                            lastAlt = location.hasAltitude() ? location.getAltitude() : null;
                         }
-                        invokeChannelSafe(data);
-                    })
-                    .addOnFailureListener(e -> {
-                        data.put("Latitude", null);
-                        data.put("Longitude", null);
-                        data.put("Altitude", null);
-                        invokeChannelSafe(data);
-                    });
+
+                        sendWithCachedLocation(data);
+
+                    }).addOnFailureListener(e -> sendWithCachedLocation(data));
         }
     }
+
+    private void sendWithCachedLocation(Map<String, Object> data) {
+        data.put("Latitude", lastLat);
+        data.put("Longitude", lastLng);
+        data.put("Altitude", lastAlt);
+
+        invokeChannelSafe(data);
+        isRunning = false;
+    }
+
     // Helper functions
     private String getNetworkTypeName(int type) {
         switch (type) {
@@ -219,7 +237,13 @@ public class MainActivity extends FlutterActivity {
     }
 
     private void invokeChannelSafe(Map<String, Object> data) {
-        runOnUiThread(() -> channel.invokeMethod("newNetworkReading", data));
+        if (channel == null) return;
+
+        runOnUiThread(() -> {
+            try {
+                channel.invokeMethod("newNetworkReading", data);
+            } catch (Exception ignored) {}
+        });
     }
 
     @Override
