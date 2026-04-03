@@ -4,8 +4,22 @@ import 'package:signal_atlas/utilities/constants.dart';
 import 'package:signal_atlas/utilities/theme/app_colors.dart';
 import 'package:signal_atlas/providers/server_health_provider.dart';
 
-class ServerCard extends StatelessWidget {
+class ServerCard extends StatefulWidget {
   const ServerCard({super.key});
+
+  @override
+  State<ServerCard> createState() => _ServerCardState();
+}
+
+class _ServerCardState extends State<ServerCard> {
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<ServerHealthProvider>().checkHealth();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'package:provider/provider.dart';
+import 'package:signal_atlas/services/device_service.dart';
 import 'package:signal_atlas/services/dashboard_service.dart';
 import 'package:signal_atlas/services/sessions_service.dart';
 import 'providers/network_reading_provider.dart';
@@ -13,9 +14,10 @@ import 'app.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  final readingsService = await NetworkReadingsService();
+  final readingsService = NetworkReadingsService();
   final dashboardService = DashboardService();
   final sessionsService = SessionsService();
+  DeviceService.init(readingsService);
 
   runApp(
     MultiProvider(
@@ -23,8 +25,15 @@ void main() async {
         ChangeNotifierProvider(create: (_) => CurrentNetworkReadingProvider(readingsService)),
         ChangeNotifierProvider(create: (_) => DashboardProvider(service: dashboardService),),
         ChangeNotifierProvider(create: (_) => ServerHealthProvider()),
-        ChangeNotifierProvider(create: (_) => LoggingProvider(readingsService, sessionsService)),
         ChangeNotifierProvider(create: (_) => SessionProvider(sessionsService)),
+
+        // LoggingProvider depends on ServerHealthProvider + SessionProvider
+        ChangeNotifierProxyProvider2<ServerHealthProvider, SessionProvider, LoggingProvider>(
+          create: (_) =>
+              LoggingProvider(readingsService, SessionProvider(sessionsService), ServerHealthProvider()),
+          update: (_, serverHealth, sessionProvider, previous) =>
+              LoggingProvider(readingsService, sessionProvider, serverHealth),
+        ),
       ],
       child: const App(),
     ),
