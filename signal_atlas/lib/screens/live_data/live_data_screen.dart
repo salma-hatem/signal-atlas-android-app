@@ -11,10 +11,8 @@ import '/utilities/theme/app_colors.dart';
 import 'widgets/metric_column.dart';
 import 'widgets/singal_kpi_card.dart';
 import 'widgets/info_tile.dart';
-import 'widgets/health_button.dart';
 import 'package:signal_atlas/widgets/signle_accordion.dart';
 import 'package:signal_atlas/widgets/widget_tooltip.dart';
-import 'package:signal_atlas/widgets/custom_snackbar.dart';
 import 'package:signal_atlas/widgets/shimmer_box.dart';
 import 'package:signal_atlas/widgets/line_chart.dart';
 
@@ -348,82 +346,6 @@ class _LiveDataPageState extends State<LiveDataPage> {
                   ),
                 ),
               ),
-
-              const SizedBox(height: 12),
-              // ------------------------------------------------
-              // Buttons
-              // ------------------------------------------------
-              Row(
-                children: [
-                  // ------------------------------------------------
-                  // Health
-                  // ------------------------------------------------
-                  HealthButton(),
-                  const SizedBox(width: 8),
-
-                  // ------------------------------------------------
-                  // Logging
-                  // ------------------------------------------------
-                  Expanded(
-                    child:
-                    WidgetTooltip (
-                      tooltip: isLoggingEnabled ? "Stop logging in database" : "Start logging in database",
-                      child:OutlinedButton.icon(
-                        style: OutlinedButton.styleFrom(
-                          backgroundColor: isLoggingEnabled
-                              ? colorScheme.secondaryContainer.withAlpha(120)
-                              : colorScheme.surface,
-                          side: BorderSide(
-                            color: isLoggingEnabled
-                                ? colorScheme.secondary
-                                : colorScheme.outline.withAlpha(40),
-                          ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
-                        ),
-                        onPressed: () {
-                          context.read<LoggingProvider>().toggleLogging();
-
-                          if (!isLoggingEnabled) {
-                            showCustomSnackBar(context, "Enabled logging to database");
-                          } else {
-                            showCustomSnackBar(context, "Disabled logging");
-                          }
-                        },
-                        icon: const Icon(Icons.terminal),
-                        label: isLoggingEnabled
-                            ? const Text("Disable Logging")
-                            : const Text("Enable Logging"),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-
-                  // ------------------------------------------------
-                  // Refresh
-                  // ------------------------------------------------
-                  WidgetTooltip (
-                    tooltip: "Refresh",
-                    child: OutlinedButton(
-                      style: OutlinedButton.styleFrom(
-                        backgroundColor: colorScheme.surface,
-                        side: BorderSide(
-                          color: colorScheme.outline.withAlpha(40),
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                      ),
-                      onPressed: () {},
-                      child: const Icon(Icons.refresh),
-                    ),
-                  ),
-                ],
-              ),
-
             ],
           );
         },
