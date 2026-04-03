@@ -10,11 +10,17 @@ class LoggingCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final loggingProvider = context.watch<LoggingProvider>();
     final isLoggingEnabled = loggingProvider.isLogging;
+    final canLog = loggingProvider.canLog;
 
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
 
     void toggleLogging() {
+      if (!canLog) {
+        showCustomSnackBar(context, "Server is offline");
+        return;
+      }
+
       context.read<LoggingProvider>().toggleLogging();
 
       showCustomSnackBar(
@@ -69,7 +75,7 @@ class LoggingCard extends StatelessWidget {
                   ),
                   Switch(
                     value: isLoggingEnabled,
-                    onChanged: (_) => toggleLogging(),
+                    onChanged: canLog ? (_) => toggleLogging() : null,
                   ),
                 ],
               ),

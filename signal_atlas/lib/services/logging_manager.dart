@@ -1,10 +1,15 @@
 import 'dart:async';
+import 'package:flutter/cupertino.dart';
+
 import 'api_service.dart';
 import 'network_readings_service.dart';
+import '../providers/sessions_provider.dart';
 import '../models/network_reading.dart';
+import '../models/sessions.dart';
 
 class LoggingManager {
   final NetworkReadingsService readingsService;
+  final SessionProvider sessionProvider;
 
   Timer? timer;
   Duration sendInterval = Duration(seconds: 2);
@@ -13,19 +18,28 @@ class LoggingManager {
   bool _isLogging = false;
   bool _isSending = false;
 
-  LoggingManager(this.readingsService, {this.batchSize = 2});
+  // keep track of how many samples were successfully sent in the session
+  int samplesSentCount = 0;
+  late DateTime sessionStart;
+  late DateTime sessionEnd;
+  bool sessionSaved = false;
+
+  LoggingManager(this.readingsService, this.sessionProvider, {this.batchSize = 2});
 
   void startLogging({Duration? interval}) {
     if (_isLogging) return;
 
+    sessionSaved = false;
+    samplesSentCount = 0;
+    sessionStart = DateTime.now();
     _isLogging = true;
     sendInterval = interval ?? Duration(seconds: 2);
 
-    print("started logging");
+    debugPrint("started logging");
 
     timer = Timer.periodic(sendInterval, (_) async {
       final latest = readingsService.latestReading;
-      print("timer ${latest}");
+      debugPrint("timer $latest");
       if (latest != null) {
         buffer.add(latest);
       }
@@ -36,7 +50,8 @@ class LoggingManager {
   }
 
   Future<void> stopLogging() async {
-    print("stopped logging ${buffer.length}");
+    debugPrint("stopped logging ${buffer.length}");
+    if (!_isLogging) return;
 
     timer?.cancel();
     _isLogging = false;
@@ -44,14 +59,27 @@ class LoggingManager {
     while (buffer.isNotEmpty) {
         await sendBatch();
     }
+
+    // Save session once
+    if (!sessionSaved) {
+      sessionEnd = DateTime.now();
+      final sessionDuration = sessionEnd.difference(sessionStart);
+      Session session = Session(
+        date: DateTime.now(),
+        duration: sessionDuration,
+        sampleCount: samplesSentCount,
+      );
+
+      await sessionProvider.addSession(session);
+      sessionSaved = true;
+      debugPrint("Session saved: $session");
+    }
   }
 
   Future<void> sendBatch() async {
-    print("called sendbatch");
     if (buffer.isEmpty) return;
 
     _isSending = true;
-
     final batchToSend = buffer.take(batchSize).toList();
 
     const maxRetries = 5;
@@ -61,20 +89,28 @@ class LoggingManager {
       try {
         await ApiService.sendBatch(batchToSend);
         // Remove readings that hae been successfully sent
-        buffer.removeRange(0, batchToSend.length);
+        final removeCount = batchToSend.length <= buffer.length
+            ? batchToSend.length
+            : buffer.length;
+
+        buffer.removeRange(0, removeCount);
+        samplesSentCount += removeCount;
+
         break; // sent successfully
       } catch (e) {
         attempts++;
 
         if (attempts >= maxRetries) {
-          print('Batch failed after $maxRetries attempts: $e');
+          debugPrint('Batch failed after $maxRetries attempts: $e');
           break;
         }
         // exponential backoff
         final delay = Duration(seconds: 1 << attempts); // 1 shifted left by attempts bits (1, 2, 4, 8, 16)
         await Future.delayed(delay);
       }
-      _isSending = false;
+      finally {
+        _isSending = false;
+      }
     }
   }
 

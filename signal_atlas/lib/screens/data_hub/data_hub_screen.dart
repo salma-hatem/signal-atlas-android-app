@@ -2,13 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../widgets/page_wrapper.dart';
 
-import 'package:signal_atlas/models/sessions.dart';
+import 'package:signal_atlas/models/network_reading.dart';
 import 'package:signal_atlas/providers/sessions_provider.dart';
+import 'package:signal_atlas/services/device_service.dart';
 
 import 'widgets/sessions_table.dart';
 import 'widgets/enable_logging_card.dart';
 import 'widgets/server_health_card.dart';
 import 'package:signal_atlas/widgets/custom_snackbar.dart';
+import 'package:signal_atlas/widgets/shimmer_box.dart';
 
 class DataHubPage extends StatefulWidget {
   const DataHubPage({
@@ -115,7 +117,9 @@ class _DataHubPageState extends State<DataHubPage> {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text("Device ID"),
-                        Text("123-ABC"),
+                        DeviceService.deviceId.value != null ?
+                        Text(DeviceService.deviceId.value!)
+                            : shimmerBox(context, height: 12, width: 150),
                       ],
                     ),
 
@@ -126,6 +130,52 @@ class _DataHubPageState extends State<DataHubPage> {
                       children: [
                         Text("Total Samples"),
                         Text(sessionsProvider.totalSamples.toString()),
+                      ],
+                    ),
+
+                    const SizedBox(height: 8),
+
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        // ------------------------------------------------
+                        // Info icon
+                        // ------------------------------------------------
+                        Row(
+                          children: [
+                            Text("Total Samples on Server"),
+
+                            const SizedBox(width: 6),
+
+                            InkWell(
+                              borderRadius: BorderRadius.circular(20),
+                              onTap: () {
+                                showDialog(
+                                  context: context,
+                                  builder: (_) => AlertDialog(
+                                    title: const Text("Data Retention"),
+                                    content: const Text(
+                                      "To keep data relevant and efficient, "
+                                      "older or highly duplicated samples in the same area"
+                                      " may be periodically removed from the server.",
+                                    ),
+                                  ),
+                                );
+                              },
+                              child: Padding(
+                                padding: const EdgeInsets.all(4),
+                                child: Icon(
+                                  Icons.info_outline,
+                                  size: 16,
+                                  color: colorScheme.outline,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        sessionsProvider.totalSamplesServer != null
+                            ? Text(sessionsProvider.totalSamplesServer.toString())
+                            : shimmerBox(context, height: 12, width: 40),
                       ],
                     ),
                   ],
@@ -175,13 +225,3 @@ class _DataHubPageState extends State<DataHubPage> {
     );
   }
 }
-
-
-final List<Session> lastSessions = [
-  Session(date: DateTime(2026, 3, 18), duration: Duration(minutes: 12), sampleCount: 120),
-  Session(date: DateTime(2026, 3, 17), duration: Duration(minutes: 25), sampleCount: 300),
-  Session(date: DateTime(2026, 3, 16), duration: Duration(minutes: 18), sampleCount: 200),
-  Session(date: DateTime(2026, 3, 15), duration: Duration(minutes: 20), sampleCount: 250),
-  Session(date: DateTime(2026, 3, 14), duration: Duration(minutes: 15), sampleCount: 150),
-  Session(date: DateTime(2026, 3, 13), duration: Duration(minutes: 10), sampleCount: 100),
-];

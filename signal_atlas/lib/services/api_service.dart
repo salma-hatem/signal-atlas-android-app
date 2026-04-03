@@ -83,4 +83,23 @@ class ApiService {
 
     return jsonDecode(response.body);
   }
+
+  // DELETE
+  static Future<bool> delete(String path, {Map<String, dynamic>? query}) async {
+
+    try {
+      final uri = Uri.parse("$baseUrl$path").replace(
+        queryParameters: query?.map(
+              (key, value) => MapEntry(key, value.toString()),
+        ),
+      );
+
+      final response = await http.delete(uri,headers: _headers,);
+
+      return response.statusCode == 200 || response.statusCode == 204;
+    } catch (e) {
+      debugPrint('DELETE error: $e');
+      return false;
+    }
+  }
 }
