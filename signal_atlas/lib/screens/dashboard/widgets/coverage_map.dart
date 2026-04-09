@@ -1,23 +1,25 @@
-import 'dart:math';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_map_heatmap/flutter_map_heatmap.dart';
 import 'package:latlong2/latlong.dart';
 
 import '/models/network_reading.dart';
-import 'map_button.dart';
-import 'heatmap_overlay.dart';
-import 'map_filters.dart';
+import 'coverage_map_view.dart';
+import 'map_overlay_controls.dart';
+import 'full_screen_map.dart';
 
 class CoverageMap extends StatefulWidget {
   final NetworkReading initialReading;
   final List<WeightedLatLng> heatData;
+  final VoidCallback enableMap;
+  final bool enabled;
 
   const CoverageMap({
     super.key,
     required this.initialReading,
     required this.heatData,
+    required this.enabled,
+    required this.enableMap,
   });
 
   @override
@@ -43,112 +45,67 @@ class _CoverageMapState extends State<CoverageMap> {
   @override
   Widget build(BuildContext context) {
     ColorScheme colorScheme = Theme.of(context).colorScheme;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Stack(
       children: [
         // ------------------------------------------------
         // Map
         // ------------------------------------------------
-        FlutterMap(
-          mapController: _mapController,
-          options: MapOptions(
-            initialCenter: _initialCenter,
-            initialZoom: 16,
-            onMapEvent: (event) {
-              setState(() {
-                _zoom = _mapController.camera.zoom;
-              });
-            },
-          ),
-          children: [
-            ColorFiltered(
-              colorFilter: MapFilters.colorFilterForTheme(Theme.of(context).brightness),
-              child: TileLayer(
-                urlTemplate: isDark
-                    ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
-                    : 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
-                subdomains: const ['a', 'b', 'c', 'd'],
-                retinaMode: MediaQuery.of(context).devicePixelRatio > 1.0,
+        GestureDetector(
+          behavior: HitTestBehavior.translucent,
+          onTap: widget.enableMap,
+          child: IgnorePointer(
+            ignoring: !widget.enabled,
+              child: CoverageMapView(
+                mapController: _mapController,
+                initialCenter: _initialCenter,
+                zoom: _zoom,
+                heatData: widget.heatData,
+                markersAlwaysVisible: _markersAlwaysVisible,
+                colorScheme: colorScheme,
               ),
             ),
-            HeatmapOverlay(
-              heatData: widget.heatData,
-              zoom: _zoom,
-              markersAlwaysVisible: _markersAlwaysVisible,
-              colorScheme: colorScheme,
-            ),
-            MarkerLayer(
-              markers: [
-                userLocationMarker(_initialCenter, colorScheme.primary, colorScheme.onPrimary),
-              ]
-            ),
-          ],
-        ),
-        // ------------------------------------------------
-        // Reset Location Button
-        // ------------------------------------------------
-        Positioned(
-          top: 8,
-          right: 8,
-          child: buildMapButton(
-            icon: Icons.gps_fixed,
-            tooltip: "Reset location",
-            onPressed: () => _mapController.moveAndRotate(_initialCenter, 16,0),
-            colorScheme: colorScheme,
           ),
-        ),
+
         // ------------------------------------------------
-        // Toggle Markers Button
+        // Map Controls (Buttons)
         // ------------------------------------------------
-        Positioned(
-          top: 56,
-          right: 8,
-          child: buildMapButton(
-            icon: _markersAlwaysVisible ? Icons.pin_drop_rounded : Icons.pin_drop_outlined,
-            tooltip: "Toggle markers",
-            onPressed: () => {
-              setState(() {
-              _markersAlwaysVisible = !_markersAlwaysVisible;
-              })
-            },
-            colorScheme: colorScheme,
-          ),
+        MapOverlayControls(
+          colorScheme: colorScheme,
+          markersAlwaysVisible: _markersAlwaysVisible,
+          onFullscreen: _openFullscreen,
+          onReset: _reset,
+          onToggleMarkers: _toggleMarkers,
         ),
-      ]
+      ],
     );
   }
 
-  Marker userLocationMarker(LatLng position, Color color, Color borderColor) {
-    return Marker(
-      point: position,
-      width: 40,
-      height: 40,
-      alignment: Alignment.bottomCenter,
-      child: Builder(
-        builder: (context) {
-          final rotation = MapCamera.of(context).rotationRad;
+  // ------------------------------------------------
+  // Buttons Functions
+  // ------------------------------------------------
+  void _toggleMarkers() {
+    widget.enableMap();
+    setState(() {
+      _markersAlwaysVisible = !_markersAlwaysVisible;
+    });
+  }
 
-          return Transform.rotate(
-            angle: -rotation,
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                Icon(
-                  Icons.location_pin,
-                  size: 40,
-                  color: borderColor,
-                ),
-                Icon(
-                  Icons.location_pin,
-                  size: 32,
-                  color: color,
-                ),
-              ],
-            ),
-          );
-        },
+  void _reset() {
+    widget.enableMap();
+    _mapController.moveAndRotate(_initialCenter, 16, 0);
+  }
+
+  void _openFullscreen() {
+    widget.enableMap();
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => FullscreenMapPage(
+          initialCenter: _initialCenter,
+          heatData: widget.heatData,
+        ),
       ),
     );
   }
+
 }

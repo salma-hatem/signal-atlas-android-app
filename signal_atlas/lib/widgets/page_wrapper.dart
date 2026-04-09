@@ -6,6 +6,7 @@ class PageWrapper extends StatefulWidget {
   final EdgeInsetsGeometry? padding;
   final bool scrollable;
   final bool keepAlive;
+  final Future<void> Function()? onRefresh;
 
   const PageWrapper({
     Key? key,
@@ -14,6 +15,7 @@ class PageWrapper extends StatefulWidget {
     this.padding,
     this.scrollable = true,
     this.keepAlive = true,
+    this.onRefresh,
   }) : super(key: key);
 
   @override
@@ -51,7 +53,15 @@ class _PageWrapperState extends State<PageWrapper>
     );
 
     if (widget.scrollable) {
-      content = SingleChildScrollView(child: content);
+      widget.onRefresh == null
+        ? content = SingleChildScrollView(child: content)
+        : content = RefreshIndicator(
+          onRefresh: widget.onRefresh ?? () async {},
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            child: content,
+          ),
+      );
     }
 
     return Scaffold(

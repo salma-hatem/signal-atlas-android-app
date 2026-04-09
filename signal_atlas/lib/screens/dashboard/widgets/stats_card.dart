@@ -36,8 +36,7 @@ class StatsCard extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           Row(
-            crossAxisAlignment: CrossAxisAlignment.baseline,
-            textBaseline: TextBaseline.alphabetic,
+            crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               value == null
                   ?shimmerBox(context, height: 24, width: 40)

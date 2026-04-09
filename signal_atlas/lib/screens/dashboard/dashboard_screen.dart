@@ -11,6 +11,7 @@ import 'package:signal_atlas/widgets/line_chart.dart';
 import 'widgets/data_filters_widgets.dart';
 import 'widgets/coverage_map.dart';
 import 'widgets/stats_card.dart';
+import 'widgets/heatmap_legend.dart';
 
 class DashboardPage extends StatefulWidget {
   const DashboardPage({super.key});
@@ -66,6 +67,14 @@ class _DashboardPageState extends State<DashboardPage> {
 
     return PageWrapper(
         title: "Dashboard",
+        onRefresh: () async {
+          final reading = context.read<CurrentNetworkReadingProvider>().latestReading;
+
+          if (reading != null) {
+            await context.read<DashboardProvider>().loadDashboard(reading);
+            print('long ${reading.longitude}');
+          }
+        },
         child: GestureDetector(
           behavior: HitTestBehavior.translucent,
           onTap: () {
@@ -224,11 +233,7 @@ class _DashboardPageState extends State<DashboardPage> {
                         // ------------------------------------------------
                         // Map
                         // ------------------------------------------------
-                        GestureDetector(
-                          onTap: () {
-                            setState(() => _mapEnabled = true);
-                          },
-                          child: Column(
+                        Column(
                             children: [
                               AnimatedContainer(
                                 duration: const Duration(milliseconds: 200),
@@ -244,37 +249,39 @@ class _DashboardPageState extends State<DashboardPage> {
                                 ),
                                 child: ClipRRect(
                                   borderRadius: BorderRadius.circular(10),
-                                  child: IgnorePointer(
-                                    ignoring: !_mapEnabled,
-                                    child: SizedBox(
+                                  child: SizedBox(
                                       height: 400,
                                       child: dashboard.reading == null
                                           ? Center(child: CircularProgressIndicator())
                                           : CoverageMap(
                                             initialReading: dashboard.reading!,
                                             heatData: dashboard.weightedLatLngPoints,
+                                            enabled: _mapEnabled,
+                                            enableMap: () {
+                                              if (!_mapEnabled) setState(() => _mapEnabled = true);
+                                            },
                                       ),
                                     ),
-                                  ),
                                 ),
                               ),
-                              const SizedBox(height: 8),
-                              Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    !_mapEnabled
-                                      ? Icon(Icons.touch_app, color: colorScheme.outline, size: 18)
-                                      : SizedBox.shrink(),
-                                    SizedBox(width: 8),
-                                    Text(
-                                      _mapEnabled ? "" : "Tap to interact with map",
-                                      style: TextStyle(color: colorScheme.outline),
-                                    ),
-                                  ],
-                                )
-                            ],
-                          )
-                        ),
+                            const SizedBox(height: 8),
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.touch_app, color: colorScheme.outline, size: 18),
+                                SizedBox(width: 8),
+                                Text(
+                                  _mapEnabled
+                                      ? "Tap outside to disable map interaction"
+                                      : "Tap to interact with map",
+                                  style: TextStyle(color: colorScheme.outline),
+                                ),
+                              ],
+                            ),
+
+                            HeatmapLegend(),
+                          ],
+                        )
                       ],
                     ),
                   ),
@@ -364,7 +371,7 @@ class _DashboardPageState extends State<DashboardPage> {
                 ),
               ],
             ),
-          ),
+        ),
     );
   }
 }

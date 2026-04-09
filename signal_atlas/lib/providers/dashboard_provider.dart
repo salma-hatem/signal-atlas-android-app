@@ -15,7 +15,7 @@ class DashboardProvider extends ChangeNotifier {
 
   Future<void> initializeDashboard() async {
     await loadOperators();
-    await loadDashboard();
+    await loadDashboard(reading!);
   }
 
   String networkType = "LTE"; // limited by project scope
@@ -49,7 +49,9 @@ class DashboardProvider extends ChangeNotifier {
   double? coverage;
   int? measurementsCount;
 
-  Future<void> loadDashboard() async {
+  Future<void> loadDashboard(NetworkReading newReading) async {
+    reading = newReading;
+
     isLoading = true;
     notifyListeners();
 
@@ -150,12 +152,12 @@ class DashboardProvider extends ChangeNotifier {
 
   void updateOperator(String value) {
     selectedOperator = value;
-    loadDashboard();
+    loadDashboard(reading!);
   }
 
   void updatePeriod(String value) {
     selectedPeriod = value;
-    loadDashboard();
+    loadDashboard(reading!);
   }
 
   void updateKPI(String value) {
@@ -165,7 +167,7 @@ class DashboardProvider extends ChangeNotifier {
 
   void updatePrediction(bool value) {
     showPredictedData = value;
-    loadDashboard();
+    loadDashboard(reading!);
   }
   void setReading(NetworkReading initialReading)
   {
