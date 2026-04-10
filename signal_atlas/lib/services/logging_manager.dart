@@ -7,7 +7,7 @@ import '../providers/sessions_provider.dart';
 import '../models/network_reading.dart';
 import '../models/sessions.dart';
 
-class LoggingManager {
+class LoggingManager extends ChangeNotifier {
   final NetworkReadingsService readingsService;
   final SessionProvider sessionProvider;
 
@@ -61,7 +61,7 @@ class LoggingManager {
     }
 
     // Save session once
-    if (!sessionSaved) {
+    if (!sessionSaved && samplesSentCount != 0) {
       sessionEnd = DateTime.now();
       final sessionDuration = sessionEnd.difference(sessionStart);
       Session session = Session(
@@ -112,6 +112,7 @@ class LoggingManager {
         _isSending = false;
       }
     }
+    notifyListeners();
   }
 
   bool get isLogging => _isLogging; // getter for private bool

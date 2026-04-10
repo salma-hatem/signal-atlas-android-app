@@ -19,21 +19,23 @@ void main() async {
   final sessionsService = SessionsService();
   DeviceService.init(readingsService);
 
+  final sessionProvider = SessionProvider(sessionsService);
+  final serverHealthProvider = ServerHealthProvider();
+
+  final loggingProvider = LoggingProvider(
+    readingsService,
+    sessionProvider,
+    serverHealthProvider,
+  );
+
   runApp(
     MultiProvider(
       providers: [
+        ChangeNotifierProvider(create: (_) => sessionProvider),
+        ChangeNotifierProvider(create: (_) => serverHealthProvider),
+        ChangeNotifierProvider(create: (_) => loggingProvider),
         ChangeNotifierProvider(create: (_) => CurrentNetworkReadingProvider(readingsService)),
-        ChangeNotifierProvider(create: (_) => DashboardProvider(service: dashboardService),),
-        ChangeNotifierProvider(create: (_) => ServerHealthProvider()),
-        ChangeNotifierProvider(create: (_) => SessionProvider(sessionsService)),
-
-        // LoggingProvider depends on ServerHealthProvider + SessionProvider
-        ChangeNotifierProxyProvider2<ServerHealthProvider, SessionProvider, LoggingProvider>(
-          create: (_) =>
-              LoggingProvider(readingsService, SessionProvider(sessionsService), ServerHealthProvider()),
-          update: (_, serverHealth, sessionProvider, previous) =>
-              LoggingProvider(readingsService, sessionProvider, serverHealth),
-        ),
+        ChangeNotifierProvider(create: (_) => DashboardProvider(service: dashboardService)),
       ],
       child: const App(),
     ),

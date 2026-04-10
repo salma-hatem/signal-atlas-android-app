@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../providers/logging_provider.dart';
 import '../../widgets/page_wrapper.dart';
 
 import 'package:signal_atlas/models/network_reading.dart';
@@ -9,6 +10,8 @@ import 'package:signal_atlas/services/device_service.dart';
 import 'widgets/sessions_table.dart';
 import 'widgets/enable_logging_card.dart';
 import 'widgets/server_health_card.dart';
+import 'widgets/session_stat.dart';
+import 'widgets/session_duration_text.dart';
 import 'package:signal_atlas/widgets/custom_snackbar.dart';
 import 'package:signal_atlas/widgets/shimmer_box.dart';
 
@@ -35,6 +38,8 @@ class _DataHubPageState extends State<DataHubPage> {
     final colorScheme = Theme.of(context).colorScheme;
 
     final sessionsProvider = context.watch<SessionProvider>();
+    final loggingProvider = context.watch<LoggingProvider>();
+    final isLoggingEnabled = loggingProvider.isLogging;
 
     return PageWrapper(
       title: "Data Hub",
@@ -68,6 +73,102 @@ class _DataHubPageState extends State<DataHubPage> {
             ),
 
             const SizedBox(height: 12),
+
+            // ------------------------------------------------
+            // Current Session
+            // ------------------------------------------------
+            AnimatedSize(
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeInOut,
+              child: ClipRect(
+                child: Align(
+                  heightFactor: isLoggingEnabled ? 1.0 : 0.0,
+                  child: Opacity(
+                    opacity: isLoggingEnabled ? 1.0 : 0.0,
+                    child: Column(
+                        children: [
+                          Card(
+                            child: Padding(
+                              padding: const EdgeInsets.all(16),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  // ------------------------------------------------
+                                  // Header
+                                  // ------------------------------------------------
+                                  Row(
+                                    children: [
+                                      Icon(Icons.timer_outlined, color: colorScheme.primary),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: Text(
+                                          "Current Session",
+                                          style: textTheme.titleMedium?.copyWith(
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+
+                                  const SizedBox(height: 12),
+
+                                  // ------------------------------------------------
+                                  // Content
+                                  // ------------------------------------------------
+                                  IntrinsicHeight(
+                                    child: Row(
+                                      children: [
+                                        SessionStat(
+                                          tooltip: 'Session Duration',
+                                          title: 'duration',
+                                          value: '',
+                                          textWidget: SessionDurationText(sessionsProvider),
+                                          colorScheme: colorScheme,
+                                        ),
+
+                                        const SizedBox(width: 4),
+
+                                        SessionStat(
+                                            tooltip: 'Samples Collected',
+                                            title: 'samples',
+                                            value: sessionsProvider.liveSamples.toString(),
+                                            colorScheme: colorScheme,
+                                          ),
+
+                                        const SizedBox(width: 4),
+
+                                        SessionStat(
+                                            tooltip: 'Device Speed',
+                                            title: 'm/s',
+                                            value: '',
+                                            colorScheme: colorScheme
+                                          ),
+
+                                        const SizedBox(width: 4),
+
+                                        SessionStat(
+                                            tooltip: 'Samples sent each second',
+                                            title: 'samples/s',
+                                            value: '',
+                                            colorScheme: colorScheme,
+                                          ),
+                                      ],
+                                    ),
+                                  ),
+
+                                ],
+                              ),
+                            ),
+                          ),
+
+                          const SizedBox(height: 12),
+                        ]
+                    ),
+                  ),
+                ),
+              ),
+            ),
 
             // ------------------------------------------------
             // Device & Stats

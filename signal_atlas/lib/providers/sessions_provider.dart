@@ -5,6 +5,7 @@ import '../models/sessions.dart';
 import '../services/sessions_service.dart';
 import '../services/api_service.dart';
 import '../services/device_service.dart';
+import '../services/logging_manager.dart';
 
 class SessionProvider extends ChangeNotifier {
   final SessionsService _service;
@@ -12,6 +13,9 @@ class SessionProvider extends ChangeNotifier {
   SessionProvider(SessionsService sessionsService)
       : _service = sessionsService;
 
+  // ------------------------------------------------
+  // Historical sessions
+  // ------------------------------------------------
   List<Session> sessions = [];
   int totalSamples = 0;
   int? totalSamplesServer;
@@ -88,4 +92,27 @@ class SessionProvider extends ChangeNotifier {
 
     return completer.future;
   }
+  // ------------------------------------------------
+  // Live session
+  // ------------------------------------------------
+  LoggingManager? _loggingManager;
+
+  bool get isLogging => _loggingManager?.isLogging ?? false;
+
+  int get liveSamples => _loggingManager?.samplesSentCount ?? 0;
+
+  Duration get liveDuration {
+    if (_loggingManager == null) return Duration.zero;
+    if (!_loggingManager!.isLogging) return Duration.zero;
+    return DateTime.now().difference(_loggingManager!.sessionStart);
+  }
+
+  void attachLoggingManager(LoggingManager manager) {
+    _loggingManager = manager;
+
+    manager.addListener(() {
+      notifyListeners();
+    });
+  }
+
 }
