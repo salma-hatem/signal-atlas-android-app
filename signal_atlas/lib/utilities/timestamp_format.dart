@@ -83,3 +83,19 @@ String getDateFromTimestamp(int timestamp, String period) {
       return date.toString();
   }
 }
+
+// Format Duration
+String formatDuration(Duration d) {
+  final h = d.inHours;
+  final m = d.inMinutes % 60;
+  final s = d.inSeconds % 60;
+
+  if (h > 0) {
+    return '${h}h ${m}m ${s}s';
+  }
+  if (m > 0) {
+    return '${m}m ${s}s';
+  }
+  return '${s}s';
+}
+

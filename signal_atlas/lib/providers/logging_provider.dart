@@ -8,13 +8,15 @@ import 'package:signal_atlas/providers/server_health_provider.dart';
 class LoggingProvider extends ChangeNotifier {
   final LoggingManager _manager;
   final ServerHealthProvider serverHealthProvider;
+  final SessionProvider sessionProvider;
   late VoidCallback _serverListener;
 
   LoggingProvider(
       NetworkReadingsService readingService,
-      SessionProvider sessionProvider,
+      this.sessionProvider,
       this.serverHealthProvider
       ) : _manager = LoggingManager(readingService, sessionProvider) {
+    sessionProvider.attachLoggingManager(_manager);
 
     // listen to stop logging if server offline
     _serverListener = () {
@@ -33,11 +35,11 @@ class LoggingProvider extends ChangeNotifier {
   bool get canLog => serverHealthProvider.state == ServerState.success;
 
 
-  void toggleLogging() {
+  Future<void> toggleLogging() async {
     if (!canLog) return; // block logging if server offline
 
     if (_manager.isLogging) {
-      _manager.stopLogging();
+      await _manager.stopLogging();
     } else {
       _manager.startLogging();
     }
