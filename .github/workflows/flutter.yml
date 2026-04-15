@@ -1,0 +1,74 @@
+name: Flutter CI/CD Release
+
+on:
+  push:
+    branches:
+      - '**'
+    tags:
+      - 'v*'
+  pull_request:
+    branches:
+      - '**'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.41.6"
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+        working-directory: signal_atlas
+
+      - name: Run tests
+        run: flutter test
+        working-directory: signal_atlas
+        continue-on-error: true
+
+
+      - name: Analyze code
+        run: flutter analyze
+        working-directory: signal_atlas
+        continue-on-error: true
+
+      - name: Build APK
+        run: |
+          flutter build apk --release \
+          --dart-define=BASE_URL=${{ secrets.BASE_URL }} \
+          --dart-define=API_KEY=${{ secrets.API_KEY }}
+        working-directory: signal_atlas
+
+      - name: Rename APK
+        run: |
+          mkdir -p release
+          cp signal_atlas/build/app/outputs/flutter-apk/app-release.apk \
+             release/app-release-${{ github.ref_name }}.apk
+
+      # CREATE GITHUB RELEASE
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        if: startsWith(github.ref, 'refs/heads') || startsWith(github.ref, 'refs/tags')
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: Release ${{ github.ref_name }}
+          body: |
+            Automated Flutter build
+
+            Branch/Tag: ${{ github.ref_name }}
+            Commit: ${{ github.sha }}
+
+            Debug/CI build
+          files: release/app-release-${{ github.ref_name }}.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
