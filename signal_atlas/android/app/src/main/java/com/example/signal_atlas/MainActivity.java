@@ -65,6 +65,16 @@ public class MainActivity extends FlutterActivity {
 
         Map<String, Object> data = new HashMap<>();
 
+        // Permissions
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.READ_PHONE_STATE) != PackageManager.PERMISSION_GRANTED ||
+                ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+
+            data.put("error", "Permissions not granted");
+            invokeChannelSafe(data);
+            isRunning = false;
+            return;
+        }
+
         // Device info
         data.put("ID", Settings.Secure.getString(getContentResolver(), Settings.Secure.ANDROID_ID));
         data.put("Date", new Date().toString());
@@ -78,16 +88,6 @@ public class MainActivity extends FlutterActivity {
                 : telephonyManager.getNetworkType();
 
         data.put("NetworkType", getNetworkTypeName(networkType));
-
-        // Permissions
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.READ_PHONE_STATE) != PackageManager.PERMISSION_GRANTED ||
-                ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-
-            data.put("error", "Permissions not granted");
-            invokeChannelSafe(data);
-            isRunning = false;
-            return;
-        }
 
         // Cell Info
         try {
