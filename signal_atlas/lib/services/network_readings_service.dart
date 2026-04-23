@@ -2,6 +2,7 @@
 // It holds a list of NetworkReading and uses a Stream to notify provider(s) when new data is available
 
 import 'dart:async';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 import 'package:permission_handler/permission_handler.dart';
 import '../models/network_reading.dart';
@@ -26,10 +27,13 @@ class NetworkReadingsService {
   // Set up channel for communication with Android (for data collecting using APIS)
   void setupChannelListener() {
     _channel.setMethodCallHandler((call) async {
-      if (call.method == 'newNetworkReading') {
-        final rawData = Map<String, dynamic>.from(call.arguments);
-        await addReadingFromRawData(rawData);
-
+      try {
+        if (call.method == 'newNetworkReading') {
+          final rawData = Map<String, dynamic>.from(call.arguments ?? {});
+          await addReadingFromRawData(rawData);
+        }
+      } catch (e) {
+        debugPrint("METHOD CHANNEL CRASH: $e");
       }
     });
   }
@@ -61,12 +65,18 @@ class NetworkReadingsService {
     };
 
     // Create model
-    final reading = NetworkReading.fromRaw(completeRawData);
+    try {
+      final reading = NetworkReading.fromRaw(completeRawData);
+      _readings.add(reading);
+      _readingController.add(reading);
 
-    // Store it
-    _readings.add(reading);
-    // Add to stream
-    _readingController.add(reading);
+      // Store it
+      _readings.add(reading);
+      // Add to stream
+      _readingController.add(reading);
+
+    } catch (e) {
+      debugPrint("MODEL CRASH: $e");
+    }
   }
-
 }

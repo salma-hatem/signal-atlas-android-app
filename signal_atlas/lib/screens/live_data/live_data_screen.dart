@@ -235,6 +235,8 @@ class _LiveDataPageState extends State<LiveDataPage> {
                 ),
               ),
 
+              const SizedBox(height: 12),
+
               // ------------------------------------------------
               // Serving Cell Card
               // ------------------------------------------------
@@ -254,7 +256,7 @@ class _LiveDataPageState extends State<LiveDataPage> {
                           // ------------------------------------------------
                           // Operator
                           // ------------------------------------------------
-                          latestReading?.networkType == null
+                          latestReading?.operatorName == null
                             ?shimmerBox(context, height: 12, width: 200)
                             : Text(
                               latestReading!.operatorName,
@@ -282,18 +284,100 @@ class _LiveDataPageState extends State<LiveDataPage> {
                           const SizedBox(width: 12),
                           Expanded(
                             child: InfoTile(
-                              title: "Tracking Area Code",
-                              value: latestReading?.trackingAreaCode.toString(),
-                              icon: Icons.map_outlined,
+                            title: "Cell ID",
+                            value: latestReading?.cellId.toString(),
+                            icon: Icons.hub_outlined,
+                            colorScheme: colorScheme,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: InfoTile(
+                              title: "Mobile Country Code",
+                              value: latestReading?.mcc.toString(),
+                              icon: Icons.public_outlined,
+                              colorScheme: colorScheme,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: InfoTile(
+                              title: "Mobile Network Code",
+                              value: latestReading?.mnc.toString(),
+                              icon: Icons.router_outlined,
                               colorScheme: colorScheme,
                             ),
                           ),
                         ],
                       ),
+                      const SizedBox(height: 12),
+                       InfoTile(
+                          title: "Tracking Area Code",
+                          value: latestReading?.trackingAreaCode.toString(),
+                          icon: Icons.map_outlined,
+                          colorScheme: colorScheme,
+                        ),
                     ],
                   ),
                 ),
               ),
+
+              const SizedBox(height: 12),
+
+              // ------------------------------------------------
+              // GPS Accuracy Card
+              // ------------------------------------------------
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.my_location,
+                        color: colorScheme.primary,
+                      ),
+                      const SizedBox(width: 12),
+
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+
+                            // Accuracy
+                            latestReading?.gpsAccuracy == null
+                                ? shimmerBox(context, height: 12, width: 120)
+                                : Text(
+                              "Accuracy: ±${latestReading!.gpsAccuracy!.toStringAsFixed(1)} m",
+                              style: textTheme.bodyMedium?.copyWith(
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+
+                            const SizedBox(height: 4),
+
+                            // Indoor / Outdoor
+                            latestReading?.indoorOutdoor == null
+                                ? shimmerBox(context, height: 10, width: 100)
+                                : Text(
+                              "Environment: ${latestReading!.indoorOutdoor}",
+                              style: TextStyle(
+                                color: colorScheme.onSurfaceVariant,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 12),
 
               // ------------------------------------------------
               // Line Chart Card

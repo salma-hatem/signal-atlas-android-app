@@ -26,10 +26,11 @@ public class MainActivity extends FlutterActivity {
 
     private MethodChannel channel;
     private Timer timer;
+    private long lastSendTime = 0;
 
     private TelephonyManager telephonyManager;
     private FusedLocationProviderClient fusedLocationClient;
-    
+
     private boolean isRunning = false;
     private long lastLocationRequestTime = 0;
 
@@ -47,8 +48,32 @@ public class MainActivity extends FlutterActivity {
         startSendingUpdates();
     }
 
+    @Override
+    protected void onPause() {
+        super.onPause();
+
+        if (timer != null) {
+            timer.cancel();
+            timer = null;
+        }
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        new android.os.Handler().postDelayed(() -> {
+            if (timer == null) {
+                startSendingUpdates();
+            }
+        }, 500);
+    }
+
     // Data is sent periodically using a Timer
     private void startSendingUpdates() {
+        if (timer != null) {
+            timer.cancel();
+            timer = null;
+        }
         timer = new Timer();
         timer.scheduleAtFixedRate(new TimerTask() {
             @Override
@@ -81,13 +106,21 @@ public class MainActivity extends FlutterActivity {
         data.put("Timestamp", System.currentTimeMillis());
 
         // Operator info
-        data.put("Operator", telephonyManager.getNetworkOperatorName());
+        try {
+            data.put("Operator", telephonyManager.getNetworkOperatorName());
+        } catch (Exception e) {
+            data.put("Operator", "unknown");
+        }
 
-        int networkType = (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R)
-                ? telephonyManager.getDataNetworkType()
-                : telephonyManager.getNetworkType();
+        try {
+            int networkType = (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R)
+                    ? telephonyManager.getDataNetworkType()
+                    : telephonyManager.getNetworkType();
 
-        data.put("NetworkType", getNetworkTypeName(networkType));
+            data.put("NetworkType", getNetworkTypeName(networkType));
+        } catch (Exception e) {
+            data.put("NetworkType", "unknown");
+        }
 
         // Cell Info
         try {
@@ -135,9 +168,24 @@ public class MainActivity extends FlutterActivity {
                             data.put("RSRQ", nrSignal.getCsiRsrq());
                         }
 
+                        if (cellInfo instanceof CellInfoLte && cellInfo.isRegistered()) {
+                            CellInfoLte lte = (CellInfoLte) cellInfo;
+                            CellIdentityLte lteId = lte.getCellIdentity();
+
+                            int ci = lteId.getCi();
+
+                            if (ci == CellInfo.UNAVAILABLE) {
+                                data.put("Cell ID", null);
+                            } else {
+                                data.put("Cell ID", ci);
+                            }
+                            data.put("MCC", lteId.getMccString());
+                            data.put("MNC", lteId.getMncString());
+                        }
+
                         if (identity instanceof CellIdentityLte) {
                             CellIdentityLte lteId = (CellIdentityLte) identity;
-                            data.put("Cell ID", lteId.getCi());
+
                             data.put("TAC", lteId.getTac());
                             data.put("PCI", lteId.getPci());
 
@@ -163,49 +211,113 @@ public class MainActivity extends FlutterActivity {
     private void getLocationAndSend(Map<String, Object> data) {
 
         if (!isLocationEnabled()) {
+            data.put("Accuracy", -1);
+            data.put("IndoorOutdoor", "Unknown");
             sendWithCachedLocation(data);
             return;
         }
 
         long now = System.currentTimeMillis();
 
-        // throttle GPS requests (every 5 sec)
-        if (now - lastLocationRequestTime < 5000) {
+        // throttle GPS requests
+        if (now - lastLocationRequestTime < 2500) {
+            data.put("Accuracy", -1);
+            data.put("IndoorOutdoor", "Cached");
             sendWithCachedLocation(data);
             return;
         }
 
         lastLocationRequestTime = now;
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            fusedLocationClient.getCurrentLocation(
-                    LocationRequest.PRIORITY_HIGH_ACCURACY,
-                    null
-            ).addOnSuccessListener(location -> {
+        // Try to get fresh high-accuracy location first
+        com.google.android.gms.location.LocationRequest request =
+                com.google.android.gms.location.LocationRequest.create()
+                        .setPriority(com.google.android.gms.location.LocationRequest.PRIORITY_HIGH_ACCURACY)
+                        .setNumUpdates(1)
+                        .setInterval(0);
 
-                if (location != null) {
+        fusedLocationClient.getCurrentLocation(
+                com.google.android.gms.location.LocationRequest.PRIORITY_HIGH_ACCURACY,
+                null
+        ).addOnSuccessListener(location -> {
+
+            if (location != null) {
+
+                float acc = location.getAccuracy();
+                long age = System.currentTimeMillis() - location.getTime();
+
+                // Accept only good + fresh locations
+                if (acc <= 70 && age < 15000) {
+
                     lastLat = location.getLatitude();
                     lastLng = location.getLongitude();
                     lastAlt = location.hasAltitude() ? location.getAltitude() : null;
+
+                    data.put("Accuracy", acc);
+                    data.put("IndoorOutdoor", estimateIndoorOutdoor(location));
+
+                    sendWithCachedLocation(data);
+                    return;
                 }
+            }
 
-                sendWithCachedLocation(data);
+            // Fallback if fresh location is bad or null
+            fallbackToLastLocation(data);
 
-            }).addOnFailureListener(e -> sendWithCachedLocation(data));
+        }).addOnFailureListener(e -> {
+            fallbackToLastLocation(data);
+        });
+    }
 
-        } else {
-            fusedLocationClient.getLastLocation()
-                    .addOnSuccessListener(location -> {
+    private void fallbackToLastLocation(Map<String, Object> data) {
 
-                        if (location != null) {
+        fusedLocationClient.getLastLocation()
+                .addOnSuccessListener(location -> {
+
+                    if (location != null) {
+
+                        float acc = location.getAccuracy();
+
+                        // accept even if slightly worse (fallback mode)
+                        if (acc <= 100) {
                             lastLat = location.getLatitude();
                             lastLng = location.getLongitude();
                             lastAlt = location.hasAltitude() ? location.getAltitude() : null;
+
+                            data.put("Accuracy", acc);
+                            data.put("IndoorOutdoor", estimateIndoorOutdoor(location));
+
+                            sendWithCachedLocation(data);
+                            return;
                         }
+                    }
 
-                        sendWithCachedLocation(data);
+                    // total failure → use cached
+                    data.put("Accuracy", -1);
+                    data.put("IndoorOutdoor", "Unknown");
 
-                    }).addOnFailureListener(e -> sendWithCachedLocation(data));
+                    sendWithCachedLocation(data);
+
+                })
+                .addOnFailureListener(e -> {
+                    data.put("Accuracy", -1);
+                    data.put("IndoorOutdoor", "Unknown");
+                    sendWithCachedLocation(data);
+                });
+    }
+
+    // Estimate Indoors/Outdoors
+    private String estimateIndoorOutdoor(Location location) {
+        if (location == null) return "Unknown";
+
+        float accuracy = location.getAccuracy();
+
+        if (accuracy <= 15) {
+            return "Outdoor";
+        } else if (accuracy <= 50) {
+            return "Uncertain";
+        } else {
+            return "Indoor";
         }
     }
 
@@ -237,7 +349,12 @@ public class MainActivity extends FlutterActivity {
     }
 
     private void invokeChannelSafe(Map<String, Object> data) {
-        if (channel == null) return;
+        if (channel == null || getFlutterEngine() == null) return;
+        long now = System.currentTimeMillis();
+        if (now - lastSendTime < 300) return; // throttle Flutter flood
+        lastSendTime = now;
+
+        if (isFinishing() || isDestroyed()) return;
 
         runOnUiThread(() -> {
             try {

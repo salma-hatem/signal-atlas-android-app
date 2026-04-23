@@ -20,6 +20,8 @@ class NetworkReading {
   final double altitude;
   final String? city;
   final String? country;
+  final double? gpsAccuracy;
+  final String? indoorOutdoor;
 
   // Network KPIs
   final int asu;
@@ -32,7 +34,10 @@ class NetworkReading {
   final String networkType;
   final String operatorName;
   final int physicalCellId;
+  final int cellId;
   final int trackingAreaCode;
+  final int mcc;
+  final int mnc;
 
   NetworkReading({
     required this.deviceId,
@@ -41,6 +46,8 @@ class NetworkReading {
     required this.altitude,
     required this.city,
     required this.country,
+    required this.gpsAccuracy,
+    required this.indoorOutdoor,
     required this.timestamp,
     required this.level,
     required this.rsrp,
@@ -50,7 +57,10 @@ class NetworkReading {
     required this.networkType,
     required this.operatorName,
     required this.physicalCellId,
+    required this.cellId,
     required this.trackingAreaCode,
+    required this.mcc,
+    required this.mnc,
   });
 
   String get latitudeFormatted => decimalToDegrees(latitude);
@@ -97,6 +107,8 @@ class NetworkReading {
       altitude: parseValue<double>(raw['Altitude'], defaultValue: 0.0),
       city: raw['city']?.toString(),
       country: raw['country']?.toString(),
+      gpsAccuracy: raw['Accuracy'],
+      indoorOutdoor: raw['IndoorOutdoor']?.toString(),
       timestamp: DateTime.fromMillisecondsSinceEpoch(
           raw['Timestamp'] ?? DateTime.now().millisecondsSinceEpoch),
       level: parseValue<int>(raw['Level'], defaultValue: 0),
@@ -127,7 +139,10 @@ class NetworkReading {
       networkType: raw['NetworkType']?.toString() ?? '-',
       operatorName: raw['Operator']?.toString() ?? '-',
       physicalCellId: parseValue<int>(raw['PCI'], defaultValue: 0),
+      cellId: parseValue<int>(raw['Cell ID'], defaultValue: 0),
       trackingAreaCode: parseValue<int>(raw['TAC'], defaultValue: 0),
+      mcc: parseValue<int>(raw['MCC'], defaultValue: 0),
+      mnc: parseValue<int>(raw['MNC'], defaultValue: 0),
     );
   }
 
@@ -141,6 +156,7 @@ class NetworkReading {
       'altitude': altitude,
       'country': country,
       'city': city,
+      'gpsAccuracy': gpsAccuracy,
       'level': level,
       'asu': asu,
       'rsrp': rsrp,
