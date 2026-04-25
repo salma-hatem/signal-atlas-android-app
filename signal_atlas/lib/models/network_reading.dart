@@ -164,6 +164,7 @@ class NetworkReading {
       'rsrq': rsrq,
       'networkType': networkType,
       'operator': operatorName,
+      'cellId': cellId.toString(),
       'physicalCellId': physicalCellId,
       'trackingAreaCode': trackingAreaCode,
     };
