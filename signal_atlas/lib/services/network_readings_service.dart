@@ -22,6 +22,7 @@ class NetworkReadingsService {
   NetworkReadingsService() {
     requestPermissions();
     setupChannelListener();
+    startBackgroundService();
   }
 
   // Set up channel for communication with Android (for data collecting using APIS)
@@ -36,6 +37,24 @@ class NetworkReadingsService {
         debugPrint("METHOD CHANNEL CRASH: $e");
       }
     });
+  }
+
+  // Set up background service to collect data in the background
+  Future<void> startBackgroundService() async {
+    try {
+      await _channel.invokeMethod("startService");
+    } catch (e) {
+      debugPrint("Failed to start service: $e");
+    }
+  }
+
+  // Stop data collection in the background
+  Future<void> stopBackgroundService() async {
+    try {
+      await _channel.invokeMethod('stopService');
+    } catch (e) {
+      debugPrint("Failed to stop service: $e");
+    }
   }
 
   // Request permissions required by the data collecting APIs
