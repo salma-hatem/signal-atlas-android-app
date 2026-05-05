@@ -3,10 +3,9 @@
 
 import 'dart:async';
 import 'package:flutter/cupertino.dart';
-import 'package:flutter/services.dart';
-import 'package:permission_handler/permission_handler.dart';
 import '../models/network_reading.dart';
 import '../services/geocoding_service.dart';
+import 'package:signal_atlas/utilities/constants.dart';
 
 class NetworkReadingsService {
   final List<NetworkReading> _readings = [];  // private list
@@ -17,32 +16,11 @@ class NetworkReadingsService {
   final _readingController = StreamController<NetworkReading>.broadcast();
   Stream<NetworkReading> get readingStream => _readingController.stream;
 
-  static const _channel = MethodChannel('com.example.signal_atlas');
-
-  NetworkReadingsService() {
-    requestPermissions();
-    setupChannelListener();
-    startBackgroundService();
-  }
-
-  // Set up channel for communication with Android (for data collecting using APIS)
-  void setupChannelListener() {
-    _channel.setMethodCallHandler((call) async {
-      try {
-        if (call.method == 'newNetworkReading') {
-          final rawData = Map<String, dynamic>.from(call.arguments ?? {});
-          await addReadingFromRawData(rawData);
-        }
-      } catch (e) {
-        debugPrint("METHOD CHANNEL CRASH: $e");
-      }
-    });
-  }
 
   // Set up background service to collect data in the background
   Future<void> startBackgroundService() async {
     try {
-      await _channel.invokeMethod("startService");
+      await AndroidChannel.channel.invokeMethod("startService");
     } catch (e) {
       debugPrint("Failed to start service: $e");
     }
@@ -51,19 +29,17 @@ class NetworkReadingsService {
   // Stop data collection in the background
   Future<void> stopBackgroundService() async {
     try {
-      await _channel.invokeMethod('stopService');
+      await AndroidChannel.channel.invokeMethod('stopService');
     } catch (e) {
       debugPrint("Failed to stop service: $e");
     }
   }
 
-  // Request permissions required by the data collecting APIs
-  Future<void> requestPermissions() async {
-    await [
-      Permission.location,
-      Permission.phone,
-    ].request();
+  // Request battery optimization
+  Future<void> requestBatteryOptimization() async {
+    await AndroidChannel.channel.invokeMethod("requestBatteryOptimization");
   }
+
 
   // Append list
   void addReading(NetworkReading reading) {
@@ -86,8 +62,6 @@ class NetworkReadingsService {
     // Create model
     try {
       final reading = NetworkReading.fromRaw(completeRawData);
-      _readings.add(reading);
-      _readingController.add(reading);
 
       // Store it
       _readings.add(reading);
