@@ -1,3 +1,4 @@
+import 'package:flutter/services.dart';
 
 class ApiConfig {
   static const String baseUrl = String.fromEnvironment('BASE_URL'); // Container backend url
@@ -9,4 +10,8 @@ enum ServerState {
   loading,
   success,
   error,
+}
+
+class AndroidChannel {
+  static const channel = MethodChannel('com.example.signal_atlas');
 }

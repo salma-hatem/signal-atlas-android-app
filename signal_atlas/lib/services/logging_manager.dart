@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 import 'api_service.dart';
 import 'network_readings_service.dart';
@@ -10,6 +11,7 @@ import '../models/sessions.dart';
 class LoggingManager extends ChangeNotifier {
   final NetworkReadingsService readingsService;
   final SessionProvider sessionProvider;
+  final FlutterLocalNotificationsPlugin notificationsPlugin;
 
   Timer? timer;
   Duration sendInterval = Duration(seconds: 2);
@@ -24,9 +26,14 @@ class LoggingManager extends ChangeNotifier {
   late DateTime sessionEnd;
   bool sessionSaved = false;
 
-  LoggingManager(this.readingsService, this.sessionProvider, {this.batchSize = 2});
+  LoggingManager(
+      this.readingsService,
+      this.sessionProvider,
+      this.notificationsPlugin,
+      {this.batchSize = 2}
+  );
 
-  void startLogging({Duration? interval}) {
+  Future<void> startLogging({Duration? interval}) async {
     if (_isLogging) return;
 
     sessionSaved = false;
@@ -47,6 +54,22 @@ class LoggingManager extends ChangeNotifier {
         await sendBatch();
       }
     });
+    print("NOTIFICATION");
+    await notificationsPlugin.show(
+      id: 2,
+      title: 'Signal Atlas',
+      body: 'Logging is running in background',
+      notificationDetails: const NotificationDetails(
+        android: AndroidNotificationDetails(
+          'logging_channel',
+          'Logging',
+          importance: Importance.high,
+          priority: Priority.high,
+          ongoing: true,
+          autoCancel: false,
+        ),
+      ),
+    );
   }
 
   Future<void> stopLogging() async {
@@ -74,6 +97,8 @@ class LoggingManager extends ChangeNotifier {
       sessionSaved = true;
       debugPrint("Session saved: $session");
     }
+
+    await notificationsPlugin.cancel(id: 2);
   }
 
   Future<void> sendBatch() async {

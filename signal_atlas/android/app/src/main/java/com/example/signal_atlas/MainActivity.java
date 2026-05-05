@@ -17,6 +17,7 @@ public class MainActivity extends FlutterActivity {
 
     public static MethodChannel sharedChannel;
     public static FlutterEngine sharedEngine;
+    private boolean returnedFromBatterySettings = false;
 
     @Override
     public void configureFlutterEngine(@NonNull FlutterEngine flutterEngine) {
@@ -32,9 +33,11 @@ public class MainActivity extends FlutterActivity {
 
         sharedChannel.setMethodCallHandler((call, result) -> {
 
-            if (call.method.equals("startService")) {
-
+            if (call.method.equals("requestBatteryOptimization")) {
                 requestBatteryOptimizationDisable();
+                result.success(null);
+
+            } else if (call.method.equals("startService")) {
 
                 Intent intent = new Intent(this, SignalService.class);
 
@@ -45,7 +48,6 @@ public class MainActivity extends FlutterActivity {
                 }
 
                 result.success(null);
-
             } else if (call.method.equals("stopService")) {
 
                 Intent intent = new Intent(this, SignalService.class);
@@ -61,6 +63,22 @@ public class MainActivity extends FlutterActivity {
             Intent intent = new Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS);
             intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             startActivity(intent);
+
+            returnedFromBatterySettings = true;
         } catch (Exception ignored) {}
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+
+        if (returnedFromBatterySettings) {
+            returnedFromBatterySettings = false;
+
+            // NOW safe to continue Flutter flow
+            if (sharedChannel != null) {
+                sharedChannel.invokeMethod("batterySettingsClosed", null);
+            }
+        }
     }
 }

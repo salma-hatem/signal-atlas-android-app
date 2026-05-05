@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:signal_atlas/utilities/constants.dart';
 import 'package:signal_atlas/services/logging_manager.dart';
 import 'package:signal_atlas/services/network_readings_service.dart';
@@ -14,8 +15,9 @@ class LoggingProvider extends ChangeNotifier {
   LoggingProvider(
       NetworkReadingsService readingService,
       this.sessionProvider,
-      this.serverHealthProvider
-      ) : _manager = LoggingManager(readingService, sessionProvider) {
+      this.serverHealthProvider,
+      FlutterLocalNotificationsPlugin notificationsPlugin,
+      ) : _manager = LoggingManager(readingService, sessionProvider, notificationsPlugin,) {
     sessionProvider.attachLoggingManager(_manager);
 
     // listen to stop logging if server offline
