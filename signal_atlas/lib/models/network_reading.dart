@@ -22,6 +22,7 @@ class NetworkReading {
   final String? country;
   final double? gpsAccuracy;
   final String? indoorOutdoor;
+  final double speedMps;
 
   // Network KPIs
   final int asu;
@@ -61,6 +62,7 @@ class NetworkReading {
     required this.trackingAreaCode,
     required this.mcc,
     required this.mnc,
+    required this.speedMps,
   });
 
   String get latitudeFormatted => decimalToDegrees(latitude);
@@ -107,7 +109,7 @@ class NetworkReading {
       altitude: parseValue<double>(raw['Altitude'], defaultValue: 0.0),
       city: raw['city']?.toString(),
       country: raw['country']?.toString(),
-      gpsAccuracy: raw['Accuracy'],
+      gpsAccuracy: parseValue<double>(raw['Altitude'], defaultValue: 0.0),
       indoorOutdoor: raw['IndoorOutdoor']?.toString(),
       timestamp: DateTime.fromMillisecondsSinceEpoch(
           raw['Timestamp'] ?? DateTime.now().millisecondsSinceEpoch),
@@ -143,6 +145,7 @@ class NetworkReading {
       trackingAreaCode: parseValue<int>(raw['TAC'], defaultValue: 0),
       mcc: parseValue<int>(raw['MCC'], defaultValue: 0),
       mnc: parseValue<int>(raw['MNC'], defaultValue: 0),
+      speedMps: parseValue<double>(raw['Speed_mps'], defaultValue: 0),
     );
   }
 
@@ -156,7 +159,7 @@ class NetworkReading {
       'altitude': altitude,
       'country': country,
       'city': city,
-      'gpsAccuracy': gpsAccuracy,
+      'gpsAccuracy': gpsAccuracy?.toDouble(),
       'level': level,
       'asu': asu,
       'rsrp': rsrp,
@@ -167,7 +170,11 @@ class NetworkReading {
       'cellId': cellId.toString(),
       'physicalCellId': physicalCellId,
       'trackingAreaCode': trackingAreaCode,
+      'speedMps': speedMps,
     };
   }
+}
 
+extension NetworkReadingDedup on NetworkReading {
+  String get signature => "$deviceId-$timestamp-$cellId-$rsrp-$rsrq";
 }

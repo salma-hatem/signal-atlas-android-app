@@ -14,6 +14,7 @@ import 'widgets/session_stat.dart';
 import 'widgets/session_duration_text.dart';
 import 'package:signal_atlas/widgets/custom_snackbar.dart';
 import 'package:signal_atlas/widgets/shimmer_box.dart';
+import 'package:signal_atlas/utilities/timestamp_format.dart';
 
 class DataHubPage extends StatefulWidget {
   const DataHubPage({
@@ -82,9 +83,9 @@ class _DataHubPageState extends State<DataHubPage> {
               curve: Curves.easeInOut,
               child: ClipRect(
                 child: Align(
-                  heightFactor: isLoggingEnabled ? 1.0 : 0.0,
+                  heightFactor: isLoggingEnabled ? 1.0 : 1.0,
                   child: Opacity(
-                    opacity: isLoggingEnabled ? 1.0 : 0.0,
+                    opacity: isLoggingEnabled ? 1.0 : 1.0,
                     child: Column(
                         children: [
                           Card(
@@ -141,16 +142,16 @@ class _DataHubPageState extends State<DataHubPage> {
                                         SessionStat(
                                             tooltip: 'Device Speed',
                                             title: 'm/s',
-                                            value: '',
+                                            value:  _formatSpeed(loggingProvider.currentSpeedKmh),
                                             colorScheme: colorScheme
                                           ),
 
                                         const SizedBox(width: 4),
 
                                         SessionStat(
-                                            tooltip: 'Samples sent each second',
-                                            title: 'samples/s',
-                                            value: '',
+                                            tooltip: 'Samples sent each minute',
+                                            title: 'samples/min',
+                                            value: loggingProvider.currentSendingRatePerMinute.toStringAsFixed(1),
                                             colorScheme: colorScheme,
                                           ),
                                       ],
@@ -324,5 +325,12 @@ class _DataHubPageState extends State<DataHubPage> {
         ],
       ),
     );
+  }
+
+  String _formatSpeed(double? speed) {
+    if (speed == null) return "--";
+
+    if (speed < 1) return "0";
+    return speed.toStringAsFixed(1);
   }
 }
