@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:signal_atlas/utilities/constants.dart';
@@ -11,6 +13,7 @@ class LoggingProvider extends ChangeNotifier {
   final ServerHealthProvider serverHealthProvider;
   final SessionProvider sessionProvider;
   late VoidCallback _serverListener;
+  late StreamSubscription _readingSub;
 
   LoggingProvider(
       NetworkReadingsService readingService,
@@ -19,6 +22,11 @@ class LoggingProvider extends ChangeNotifier {
       FlutterLocalNotificationsPlugin notificationsPlugin,
       ) : _manager = LoggingManager(readingService, sessionProvider, notificationsPlugin,) {
     sessionProvider.attachLoggingManager(_manager);
+
+    // Update UI when new readings arrive in the stream
+    _readingSub = readingService.readingStream.listen((_) {
+      notifyListeners();
+    });
 
     // listen to stop logging if server offline
     _serverListener = () {
@@ -33,6 +41,7 @@ class LoggingProvider extends ChangeNotifier {
   }
 
   bool get isLogging => _manager.isLogging;
+  double get currentSendingRatePerMinute => _manager.currentSendingRatePerMinute;
 
   bool get canLog => serverHealthProvider.state == ServerState.success;
 
@@ -48,8 +57,11 @@ class LoggingProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  double? get currentSpeedKmh => _manager.currentSpeedMps;
+
   @override
   void dispose() {
+    _readingSub.cancel();
     serverHealthProvider.removeListener(_serverListener);
     _manager.stopLogging();
     super.dispose();

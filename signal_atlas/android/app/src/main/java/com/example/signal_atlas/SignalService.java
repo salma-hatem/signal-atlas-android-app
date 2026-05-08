@@ -12,11 +12,13 @@ import android.os.IBinder;
 import android.provider.Settings;
 import android.telephony.*;
 import io.flutter.plugin.common.MethodChannel;
-
 import androidx.core.app.ActivityCompat;
 import androidx.core.app.NotificationCompat;
-
 import com.google.android.gms.location.*;
+import android.hardware.Sensor;
+import android.hardware.SensorEvent;
+import android.hardware.SensorEventListener;
+import android.hardware.SensorManager;
 
 import java.util.*;
 import java.util.concurrent.ExecutorService;
@@ -35,6 +37,14 @@ public class SignalService extends Service {
     private long lastLocationRequestTime = 0;
 
     private Double lastLat = null, lastLng = null, lastAlt = null;
+    private SensorManager sensorManager;
+    private Sensor stepSensor;
+
+    private int stepCount = 0;
+    private long lastStepTime = 0;
+    private Float lastStepSpeed = null;
+    private long lastStepDetectedTime = 0;
+    private Float smoothedStepSpeed = null;
 
     @Override
     public void onCreate() {
@@ -42,6 +52,13 @@ public class SignalService extends Service {
 
         telephonyManager = (TelephonyManager) getSystemService(Context.TELEPHONY_SERVICE);
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
+
+        sensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
+        stepSensor = sensorManager.getDefaultSensor(Sensor.TYPE_STEP_DETECTOR);
+
+        if (stepSensor != null) {
+            sensorManager.registerListener(stepListener, stepSensor, SensorManager.SENSOR_DELAY_NORMAL);
+        }
     }
 
     @Override
@@ -231,6 +248,24 @@ public class SignalService extends Service {
         ).addOnSuccessListener(location -> {
 
             if (location != null) {
+                float finalSpeed;
+
+                boolean isWalkingRecently = (System.currentTimeMillis() - lastStepDetectedTime) < 3000;
+
+                if (location.hasSpeed() && location.getSpeed() > 2.0f) {
+                    // vehicle
+                    finalSpeed = location.getSpeed();
+
+                } else if (isWalkingRecently && lastStepSpeed != null) {
+                    // walking
+                    finalSpeed = lastStepSpeed;
+
+                } else {
+                    // still
+                    finalSpeed = 0f;
+                }
+
+                data.put("Speed_mps", finalSpeed);
 
                 float acc = location.getAccuracy();
                 long age = System.currentTimeMillis() - location.getTime();
@@ -264,6 +299,24 @@ public class SignalService extends Service {
                 .addOnSuccessListener(location -> {
 
                     if (location != null) {
+                        float finalSpeed;
+
+                        boolean isWalkingRecently = (System.currentTimeMillis() - lastStepDetectedTime) < 3000;
+
+                        if (location.hasSpeed() && location.getSpeed() > 3.0f) {
+                            // vehicle
+                            finalSpeed = location.getSpeed();
+
+                        } else if (isWalkingRecently && lastStepSpeed != null) {
+                            // walking
+                            finalSpeed = lastStepSpeed;
+
+                        } else {
+                            // still
+                            finalSpeed = 0f;
+                        }
+
+                        data.put("Speed_mps", finalSpeed);
 
                         float acc = location.getAccuracy();
 
@@ -318,6 +371,44 @@ public class SignalService extends Service {
         sendToFlutter(data);
         isRunning = false;
     }
+
+    // Movement sensor for better speed estimation while walking
+    private final SensorEventListener stepListener = new SensorEventListener() {
+        @Override
+        public void onSensorChanged(SensorEvent event) {
+            stepCount++;
+
+            long now = System.currentTimeMillis();
+
+            if (lastStepTime != 0) {
+                long delta = now - lastStepTime;
+
+                float stepFrequency = 1000f / delta; // steps per second (Hz)
+                float stepLength = 0.65f + (stepFrequency * 0.1f);
+                float speed = stepLength / (delta / 1000f); // m/s
+
+                // filter unrealistic values
+                if (speed > 0 && speed < 3.5f) {
+
+                    float alpha = 0.3f;
+
+                    if (smoothedStepSpeed == null) {
+                        smoothedStepSpeed = speed;
+                    } else {
+                        smoothedStepSpeed = alpha * speed + (1 - alpha) * smoothedStepSpeed;
+                    }
+
+                    lastStepSpeed = smoothedStepSpeed;
+                }
+            }
+
+            lastStepTime = now;
+            lastStepDetectedTime = now;
+        }
+
+        @Override
+        public void onAccuracyChanged(Sensor sensor, int accuracy) {}
+    };
 
     // Helper functions
     private String getNetworkTypeName(int type) {
@@ -378,10 +469,14 @@ public class SignalService extends Service {
             timer.cancel();
             timer = null;
         }
+
+        if (sensorManager != null) {
+            sensorManager.unregisterListener(stepListener);
+        }
+
         isRunning = false;
         super.onDestroy();
     }
-
     @Override
     public IBinder onBind(Intent intent) {
         return null;

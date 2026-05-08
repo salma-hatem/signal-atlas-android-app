@@ -41,6 +41,7 @@ class SessionStat extends StatelessWidget {
                 const SizedBox(height: 2),
                 Text(
                   title,
+                  textAlign: TextAlign.center,
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     color: colorScheme.onSurfaceVariant,
                   ),

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
@@ -14,11 +15,14 @@ class LoggingManager extends ChangeNotifier {
   final FlutterLocalNotificationsPlugin notificationsPlugin;
 
   Timer? timer;
-  Duration sendInterval = Duration(seconds: 2);
+  Duration _sendInterval = Duration(seconds: 2);
   List<NetworkReading> buffer = [];
   final int batchSize;
   bool _isLogging = false;
   bool _isSending = false;
+  DateTime? _stationarySince;
+  DateTime? _movingSince;
+  String? _lastSentSignature; // avoid sending same reading more than once
 
   // keep track of how many samples were successfully sent in the session
   int samplesSentCount = 0;
@@ -40,21 +44,10 @@ class LoggingManager extends ChangeNotifier {
     samplesSentCount = 0;
     sessionStart = DateTime.now();
     _isLogging = true;
-    sendInterval = interval ?? Duration(seconds: 2);
+    _sendInterval = interval ?? Duration(seconds: 2);
 
-    debugPrint("started logging");
+    _scheduleNextTick();
 
-    timer = Timer.periodic(sendInterval, (_) async {
-      final latest = readingsService.latestReading;
-      debugPrint("timer $latest");
-      if (latest != null) {
-        buffer.add(latest);
-      }
-      if (buffer.length >= batchSize  && !_isSending) {
-        await sendBatch();
-      }
-    });
-    print("NOTIFICATION");
     await notificationsPlugin.show(
       id: 2,
       title: 'Signal Atlas',
@@ -138,6 +131,103 @@ class LoggingManager extends ChangeNotifier {
       }
     }
     notifyListeners();
+  }
+
+  void _scheduleNextTick() {
+    if (!_isLogging) return;
+
+    final speed = currentSpeedMps ?? 0.0;
+    _sendInterval = _calculateInterval(speed);
+
+    timer = Timer(_sendInterval, () async {
+      final latest = readingsService.latestReading;
+
+      if (latest == null) return;
+
+      final sig = latest.signature;
+
+      // prevent duplicates from being re-added
+      if (sig == _lastSentSignature) {
+        _scheduleNextTick();
+        return;
+      }
+
+      buffer.add(latest);
+      _lastSentSignature = sig;
+
+      if (buffer.length >= batchSize && !_isSending) {
+        await sendBatch();
+      }
+
+      _scheduleNextTick(); // reschedule with new interval
+    });
+  }
+
+  Duration _calculateInterval(double speed) {
+    const movingThreshold = 1.2;
+    const stationaryThreshold = 0.7;
+
+    if (speed > movingThreshold) {
+      _movingSince ??= DateTime.now();
+
+      final movingDuration = DateTime.now().difference(_movingSince!).inSeconds;
+
+      if (movingDuration > 2) {
+        _stationarySince = null;
+      }
+
+      return _calculateMovingInterval(speed);
+    }
+
+    if (speed < stationaryThreshold) {
+      _movingSince = null;
+      return _calculateStationaryInterval();
+    }
+
+    // hysteresis zone → DO NOT reset timers
+    if (_stationarySince != null) {
+      return _calculateStationaryInterval();
+    } else {
+      return _calculateMovingInterval(speed);
+    }
+  }
+
+  Duration _calculateMovingInterval(double speed) {
+    if (speed < 3) return const Duration(seconds: 6);
+    if (speed < 8) return const Duration(seconds: 4);
+    if (speed < 20) return const Duration(seconds: 3);
+
+    return const Duration(milliseconds: 2500); // hardware limit
+  }
+
+  Duration _calculateStationaryInterval() {
+    final now = DateTime.now();
+
+    _stationarySince ??= now;
+
+    final secondsStationary = now.difference(_stationarySince!).inSeconds;
+
+    const base = 4.0;     // start at 4 seconds
+    const growth = 1.5;   // exponential factor
+
+    final exponent = (secondsStationary / 30).clamp(0, 10);
+    final intervalSeconds = base * pow(growth, exponent);
+
+    final capped = intervalSeconds.clamp(4, 600); // 4s -> 10 min
+
+    return Duration(seconds: capped.toInt());
+  }
+
+  double? get currentSpeedMps {
+    return readingsService.latestReading?.speedMps;
+  }
+
+  double get currentSendingRatePerMinute {
+    final seconds = _sendInterval.inMilliseconds / 1000;
+    if (seconds <= 0) return 0;
+    final minutes = seconds / 60;
+
+    return batchSize / minutes;
   }
 
   bool get isLogging => _isLogging; // getter for private bool
