@@ -81,4 +81,12 @@ public class MainActivity extends FlutterActivity {
             }
         }
     }
+    @Override
+    protected void onDestroy() {
+
+        sharedEngine = null;
+        sharedChannel = null;
+
+        super.onDestroy();
+    }
 }
