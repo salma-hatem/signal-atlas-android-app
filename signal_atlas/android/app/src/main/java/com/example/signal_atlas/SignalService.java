@@ -69,7 +69,7 @@ public class SignalService extends Service {
 
         startCollecting();
 
-        return START_STICKY;
+        return START_NOT_STICKY;
     }
 
     // Data is sent periodically using a Timer
@@ -465,6 +465,7 @@ public class SignalService extends Service {
 
     @Override
     public void onDestroy() {
+
         if (timer != null) {
             timer.cancel();
             timer = null;
@@ -474,11 +475,22 @@ public class SignalService extends Service {
             sensorManager.unregisterListener(stepListener);
         }
 
+        executor.shutdownNow();
+
+        stopForeground(true);
+
         isRunning = false;
+
         super.onDestroy();
     }
     @Override
     public IBinder onBind(Intent intent) {
         return null;
+    }
+
+    @Override
+    public void onTaskRemoved(Intent rootIntent) {
+        stopSelf();
+        super.onTaskRemoved(rootIntent);
     }
 }
