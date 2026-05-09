@@ -7,6 +7,8 @@ import 'package:signal_atlas/services/logging_manager.dart';
 import 'package:signal_atlas/services/network_readings_service.dart';
 import 'package:signal_atlas/providers/sessions_provider.dart';
 import 'package:signal_atlas/providers/server_health_provider.dart';
+import '../services/location_tracking_service.dart';
+
 
 class LoggingProvider extends ChangeNotifier {
   final LoggingManager _manager;
@@ -14,13 +16,15 @@ class LoggingProvider extends ChangeNotifier {
   final SessionProvider sessionProvider;
   late VoidCallback _serverListener;
   late StreamSubscription _readingSub;
+  final LocationTrackingService locationService;
 
   LoggingProvider(
       NetworkReadingsService readingService,
       this.sessionProvider,
       this.serverHealthProvider,
+      this.locationService,
       FlutterLocalNotificationsPlugin notificationsPlugin,
-      ) : _manager = LoggingManager(readingService, sessionProvider, notificationsPlugin,) {
+      ) : _manager = LoggingManager(readingService, locationService, sessionProvider, notificationsPlugin,) {
     sessionProvider.attachLoggingManager(_manager);
 
     // Update UI when new readings arrive in the stream
@@ -42,6 +46,7 @@ class LoggingProvider extends ChangeNotifier {
 
   bool get isLogging => _manager.isLogging;
   double get currentSendingRatePerMinute => _manager.currentSendingRatePerMinute;
+  double get currentSpeedMps => _manager.currentSpeedMps;
 
   bool get canLog => serverHealthProvider.state == ServerState.success;
 
@@ -56,8 +61,6 @@ class LoggingProvider extends ChangeNotifier {
     }
     notifyListeners();
   }
-
-  double? get currentSpeedKmh => _manager.currentSpeedMps;
 
   @override
   void dispose() {
