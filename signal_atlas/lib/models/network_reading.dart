@@ -83,17 +83,15 @@ class NetworkReading {
     // Helper to safely parse numeric values
     T parseValue<T extends num>(dynamic value, {T? min, T? max, T? defaultValue}) {
       if (value == null) return defaultValue as T;
-        T? parsed;
-      if (value is T) {
+      num? parsed;
+      if (value is num) {
         parsed = value;
-      } else if (value is num) {
-        parsed = value.toDouble() as T;
       } else if (value is String) {
-        parsed = T == int ? int.tryParse(value) as T? : double.tryParse(value) as T?;
+        parsed = T == int ? int.tryParse(value) : double.tryParse(value);
       }
       if (parsed == null) return defaultValue as T;
       if ((min != null && parsed < min) || (max != null && parsed > max)) return defaultValue as T;
-      return parsed;
+      return (T == int ? parsed.toInt() : parsed.toDouble()) as T;
     }
     final rsrpRange = SignalThresholds.kpiRanges['RSRP']!;
     final rsrqRange = SignalThresholds.kpiRanges['RSRQ']!;

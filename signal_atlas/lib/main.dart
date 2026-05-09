@@ -41,11 +41,13 @@ void main() async {
   );
 
   platformService.init();
-  await platformService.startSetupFlow();
+
+  await permissionService.requestAll();
 
   runApp(
     MultiProvider(
       providers: [
+        Provider<PlatformChannelService>.value(value: platformService),
         ChangeNotifierProvider(create: (_) => sessionProvider),
         ChangeNotifierProvider(create: (_) => serverHealthProvider),
         ChangeNotifierProvider(create: (_) => LoggingProvider(

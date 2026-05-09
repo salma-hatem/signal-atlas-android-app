@@ -52,7 +52,7 @@ public class SignalService extends Service {
 
         startCollecting();
 
-        return START_STICKY;
+        return START_NOT_STICKY;
     }
 
     // Data is sent periodically using a Timer
@@ -338,15 +338,11 @@ public class SignalService extends Service {
     }
 
     private void sendToFlutter(Map<String, Object> data) {
-
-        if (MainActivity.sharedEngine == null) return;
-
         new android.os.Handler(getMainLooper()).post(() -> {
             try {
-                new MethodChannel(
-                        MainActivity.sharedEngine.getDartExecutor().getBinaryMessenger(),
-                        "com.example.signal_atlas"
-                ).invokeMethod("newNetworkReading", data);
+                if (MainActivity.sharedChannel != null) {
+                    MainActivity.sharedChannel.invokeMethod("newNetworkReading", data);
+                }
             } catch (Exception ignored) {}
         });
     }
@@ -378,8 +374,16 @@ public class SignalService extends Service {
             timer.cancel();
             timer = null;
         }
+        executor.shutdown();
+        stopForeground(true);
         isRunning = false;
         super.onDestroy();
+    }
+
+    @Override
+    public void onTaskRemoved(Intent rootIntent) {
+        stopSelf();
+        super.onTaskRemoved(rootIntent);
     }
 
     @Override

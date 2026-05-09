@@ -61,16 +61,18 @@ class DashboardService {
       },
     );
 
-    final List points = data["points"];
+    final points = data["points"];
+    if (points is! List) return [];
 
     return points.map((p) {
+      if (p is! Map) return null;
       return HeatmapPoints(
-        latitude: p["latitude"],
-        longitude: p["longitude"],
-        rsrp: p["rsrp"],
-        rsrq: p["rsrq"],
+        latitude: (p["latitude"] ?? 0).toDouble(),
+        longitude: (p["longitude"] ?? 0).toDouble(),
+        rsrp: ((p["rsrp"] ?? 0) as num).toInt(),
+        rsrq: ((p["rsrq"] ?? 0) as num).toInt(),
       );
-    }).toList();
+    }).whereType<HeatmapPoints>().toList();
   }
 
   Future<List<TrendPoints>> getTrendPoints({
@@ -96,24 +98,27 @@ class DashboardService {
       },
     );
 
-    final List points = data["points"];
+    final points = data["points"];
+    if (points is! List) return [];
 
     return points.map((p) {
+      if (p is! Map) return null;
       return TrendPoints(
-        time: DateTime.parse(p["timestamp"]),
-        rsrp: p["mean_rsrp"].round(),
-        rsrq: p["mean_rsrq"].round(),
+        time: DateTime.tryParse(p["timestamp"]?.toString() ?? "") ?? DateTime.now(),
+        rsrp: ((p["mean_rsrp"] ?? 0) as num).round(),
+        rsrq: ((p["mean_rsrq"] ?? 0) as num).round(),
       );
-    }).toList();
+    }).whereType<TrendPoints>().toList();
   }
 
   Future<List<String>> getOperators() async {
     final data = await ApiService.get("/api/mobile/operators/unique");
 
-    final List operators = data["operators"];
+    final operators = data["operators"];
     print("OPerator $operators");
 
-    return operators.cast<String>();
+    if (operators is! List) return [];
+    return operators.map((o) => o.toString()).toList();
   }
 
   String mapPeriodToApi(String period) {

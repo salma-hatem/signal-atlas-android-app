@@ -21,8 +21,9 @@ class DashboardPage extends StatefulWidget {
 }
 
 class _DashboardPageState extends State<DashboardPage> {
-  bool _mapEnabled = false; // Map focus state
-  bool _initialized = false; // Provider initialization
+  bool _mapEnabled = false;
+  bool _initialized = false;
+  bool _listenerRegistered = false;
 
   @override
   void didChangeDependencies() {
@@ -36,7 +37,8 @@ class _DashboardPageState extends State<DashboardPage> {
         dashboard.setReading(reading);
         dashboard.initializeDashboard();
         _initialized = true;
-      } else {
+      } else if (!_listenerRegistered) {
+        _listenerRegistered = true;
         provider.addListener(_onReadingUpdated);
       }
     }
@@ -51,6 +53,7 @@ class _DashboardPageState extends State<DashboardPage> {
       dashboard.initializeDashboard();
       provider.removeListener(_onReadingUpdated);
       _initialized = true;
+      _listenerRegistered = false;
       setState(() {});
     }
   }

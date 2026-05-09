@@ -14,6 +14,7 @@ class DashboardProvider extends ChangeNotifier {
   DashboardProvider({required this.service,});
 
   Future<void> initializeDashboard() async {
+    if (reading == null) return;
     await loadOperators();
     await loadDashboard(reading!);
   }

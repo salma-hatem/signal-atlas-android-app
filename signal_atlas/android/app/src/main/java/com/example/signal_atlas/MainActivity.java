@@ -3,6 +3,7 @@ package com.example.signal_atlas;
 import android.content.Intent;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.PowerManager;
 import android.provider.Settings;
 
 import androidx.annotation.NonNull;
@@ -23,7 +24,6 @@ public class MainActivity extends FlutterActivity {
     public void configureFlutterEngine(@NonNull FlutterEngine flutterEngine) {
         super.configureFlutterEngine(flutterEngine);
 
-
         sharedEngine = flutterEngine;
 
         sharedChannel = new MethodChannel(
@@ -33,7 +33,11 @@ public class MainActivity extends FlutterActivity {
 
         sharedChannel.setMethodCallHandler((call, result) -> {
 
-            if (call.method.equals("requestBatteryOptimization")) {
+            if (call.method.equals("checkBatteryOptimization")) {
+                PowerManager pm = (PowerManager) getSystemService(POWER_SERVICE);
+                result.success(pm.isIgnoringBatteryOptimizations(getPackageName()));
+
+            } else if (call.method.equals("requestBatteryOptimization")) {
                 requestBatteryOptimizationDisable();
                 result.success(null);
 
@@ -75,10 +79,19 @@ public class MainActivity extends FlutterActivity {
         if (returnedFromBatterySettings) {
             returnedFromBatterySettings = false;
 
-            // NOW safe to continue Flutter flow
             if (sharedChannel != null) {
                 sharedChannel.invokeMethod("batterySettingsClosed", null);
             }
         }
+    }
+
+    @Override
+    protected void onDestroy() {
+        if (sharedChannel != null) {
+            sharedChannel.setMethodCallHandler(null);
+        }
+        sharedChannel = null;
+        sharedEngine = null;
+        super.onDestroy();
     }
 }

@@ -44,6 +44,8 @@ class LoggingManager extends ChangeNotifier {
 
     debugPrint("started logging");
 
+    await readingsService.startBackgroundService();
+
     timer = Timer.periodic(sendInterval, (_) async {
       final latest = readingsService.latestReading;
       debugPrint("timer $latest");
@@ -78,9 +80,11 @@ class LoggingManager extends ChangeNotifier {
 
     timer?.cancel();
     _isLogging = false;
-    // Keep sending until buffer is empty
-    while (buffer.isNotEmpty) {
+    int flushAttempts = 0;
+    const maxFlushAttempts = 20;
+    while (buffer.isNotEmpty && flushAttempts < maxFlushAttempts) {
         await sendBatch();
+        flushAttempts++;
     }
 
     // Save session once
@@ -99,6 +103,8 @@ class LoggingManager extends ChangeNotifier {
     }
 
     await notificationsPlugin.cancel(id: 2);
+
+    await readingsService.stopBackgroundService();
   }
 
   Future<void> sendBatch() async {
@@ -113,7 +119,6 @@ class LoggingManager extends ChangeNotifier {
     while (attempts < maxRetries) {
       try {
         await ApiService.sendBatch(batchToSend);
-        // Remove readings that hae been successfully sent
         final removeCount = batchToSend.length <= buffer.length
             ? batchToSend.length
             : buffer.length;
@@ -130,13 +135,11 @@ class LoggingManager extends ChangeNotifier {
           break;
         }
         // exponential backoff
-        final delay = Duration(seconds: 1 << attempts); // 1 shifted left by attempts bits (1, 2, 4, 8, 16)
+        final delay = Duration(seconds: 1 << attempts);
         await Future.delayed(delay);
       }
-      finally {
-        _isSending = false;
-      }
     }
+    _isSending = false;
     notifyListeners();
   }
 

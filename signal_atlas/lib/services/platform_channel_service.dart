@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 import 'package:signal_atlas/services/permission_service.dart';
@@ -8,6 +10,8 @@ import 'network_readings_service.dart';
 class PlatformChannelService {
   final NetworkReadingsService readingsService;
   final PermissionService permissionService;
+
+  Completer<void>? _batteryOptCompleter;
 
   PlatformChannelService({
     required this.readingsService,
@@ -22,8 +26,11 @@ class PlatformChannelService {
     try {
       switch (call.method) {
         case "batterySettingsClosed":
-          await permissionService.requestAll();
-          await AndroidChannel.channel.invokeMethod("startService");
+          if (_batteryOptCompleter != null) {
+            await AndroidChannel.channel.invokeMethod("startService");
+            _batteryOptCompleter?.complete();
+            _batteryOptCompleter = null;
+          }
           break;
 
         case "newNetworkReading":
@@ -36,7 +43,26 @@ class PlatformChannelService {
     }
   }
 
-  Future<void> startSetupFlow() async {
-    await readingsService.requestBatteryOptimization();
+  Future<bool> isIgnoringBatteryOptimizations() async {
+    try {
+      final result = await AndroidChannel.channel.invokeMethod<bool>("checkBatteryOptimization");
+      return result ?? false;
+    } catch (e) {
+      debugPrint("Failed to check battery optimization: $e");
+      return false;
+    }
+  }
+
+  Future<void> requestBatteryOptimizationAndWait() async {
+    _batteryOptCompleter = Completer<void>();
+    try {
+      await AndroidChannel.channel.invokeMethod("requestBatteryOptimization");
+      await _batteryOptCompleter!.future.timeout(const Duration(minutes: 5));
+    } on TimeoutException {
+      _batteryOptCompleter = null;
+    } catch (e) {
+      _batteryOptCompleter = null;
+      rethrow;
+    }
   }
 }
