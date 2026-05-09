@@ -37,6 +37,11 @@ class PlatformChannelService {
           final rawData = Map<String, dynamic>.from(call.arguments ?? {});
           await readingsService.addReadingFromRawData(rawData);
           break;
+
+        case "samplesCount":
+          final count = call.arguments as int;
+          readingsService.updateSamplesCount(count);
+          break;
       }
     } catch (e) {
       debugPrint("METHOD CHANNEL ERROR: $e");

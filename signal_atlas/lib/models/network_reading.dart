@@ -165,6 +165,7 @@ class NetworkReading {
       'cellId': cellId.toString(),
       'physicalCellId': physicalCellId,
       'trackingAreaCode': trackingAreaCode,
+      'indoorOutdoor': indoorOutdoor,
     };
   }
 

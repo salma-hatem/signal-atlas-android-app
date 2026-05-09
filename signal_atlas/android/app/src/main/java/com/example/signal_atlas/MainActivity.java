@@ -52,12 +52,39 @@ public class MainActivity extends FlutterActivity {
                 }
 
                 result.success(null);
+
             } else if (call.method.equals("stopService")) {
 
                 Intent intent = new Intent(this, SignalService.class);
                 stopService(intent);
 
                 result.success(null);
+
+            } else if (call.method.equals("startBatching")) {
+
+                String baseUrl = call.argument("baseUrl");
+                String apiKey = call.argument("apiKey");
+                if (SignalService.instance != null && baseUrl != null && apiKey != null) {
+                    SignalService.instance.startBatching(baseUrl, apiKey);
+                }
+                result.success(null);
+
+            } else if (call.method.equals("stopBatching")) {
+
+                int count = 0;
+                if (SignalService.instance != null) {
+                    count = SignalService.instance.stopBatching();
+                }
+                result.success(count);
+
+            } else if (call.method.equals("flushNow")) {
+
+                if (SignalService.instance != null) {
+                    int count = SignalService.instance.flushAndGetCount();
+                    result.success(count);
+                } else {
+                    result.success(0);
+                }
             }
         });
     }

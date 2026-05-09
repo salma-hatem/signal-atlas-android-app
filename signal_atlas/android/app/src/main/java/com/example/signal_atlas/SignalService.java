@@ -24,6 +24,8 @@ import java.util.concurrent.Executors;
 
 public class SignalService extends Service {
 
+    public static SignalService instance;
+
     private Timer timer;
     private boolean isRunning = false;
 
@@ -36,9 +38,12 @@ public class SignalService extends Service {
 
     private Double lastLat = null, lastLng = null, lastAlt = null;
 
+    private ReadingBatcher batcher;
+
     @Override
     public void onCreate() {
         super.onCreate();
+        instance = this;
 
         telephonyManager = (TelephonyManager) getSystemService(Context.TELEPHONY_SERVICE);
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
@@ -55,7 +60,42 @@ public class SignalService extends Service {
         return START_NOT_STICKY;
     }
 
-    // Data is sent periodically using a Timer
+    public void startBatching(String baseUrl, String apiKey) {
+        if (batcher == null) {
+            batcher = new ReadingBatcher(baseUrl, apiKey, this::onBatchSent);
+            batcher.start();
+        }
+    }
+
+    public int stopBatching() {
+        int count = 0;
+        if (batcher != null) {
+            batcher.flushAll();
+            count = batcher.getTotalSent();
+            batcher.stop();
+            batcher = null;
+        }
+        return count;
+    }
+
+    private void onBatchSent(int totalSent) {
+        new android.os.Handler(getMainLooper()).post(() -> {
+            try {
+                if (MainActivity.sharedChannel != null) {
+                    MainActivity.sharedChannel.invokeMethod("samplesCount", totalSent);
+                }
+            } catch (Exception ignored) {}
+        });
+    }
+
+    public int flushAndGetCount() {
+        if (batcher != null) {
+            batcher.flushAll();
+            return batcher.getTotalSent();
+        }
+        return 0;
+    }
+
     private void startCollecting() {
         if (timer != null) {
             timer.cancel();
@@ -70,14 +110,12 @@ public class SignalService extends Service {
         }, 0, 2500);
     }
 
-    // Get data using TelephonyManager and Location APIs
     private void collectData() {
         if (isRunning) return;
         isRunning = true;
 
         Map<String, Object> data = new HashMap<>();
 
-        // Permissions
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.READ_PHONE_STATE) != PackageManager.PERMISSION_GRANTED ||
                 ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
 
@@ -87,19 +125,15 @@ public class SignalService extends Service {
             return;
         }
 
-        // Device info
         data.put("ID", Settings.Secure.getString(getContentResolver(), Settings.Secure.ANDROID_ID));
         data.put("Date", new Date().toString());
         data.put("Timestamp", System.currentTimeMillis());
 
-
-        // Operator info
         try {
             data.put("Operator", telephonyManager.getNetworkOperatorName());
         } catch (Exception e) {
             data.put("Operator", "unknown");
         }
-
 
         try {
             int networkType = (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R)
@@ -111,80 +145,68 @@ public class SignalService extends Service {
             data.put("NetworkType", "unknown");
         }
 
-        // Cell Info
         try {
             List<CellInfo> cellInfos = telephonyManager.getAllCellInfo();
 
             if (cellInfos != null && !cellInfos.isEmpty()) {
                 for (CellInfo cellInfo : cellInfos) {
-
-                    CellSignalStrength strength = null;
-                    CellIdentity identity = null;
+                    if (!cellInfo.isRegistered()) continue;
 
                     if (cellInfo instanceof CellInfoLte) {
                         CellInfoLte lte = (CellInfoLte) cellInfo;
-                        strength = lte.getCellSignalStrength();
-                        identity = lte.getCellIdentity();
+                        CellSignalStrengthLte strength = lte.getCellSignalStrength();
+                        CellIdentityLte identity = lte.getCellIdentity();
+
                         data.put("Type", "LTE");
-
-                    } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && cellInfo instanceof CellInfoNr) {
-                        CellInfoNr nr = (CellInfoNr) cellInfo;
-                        strength = nr.getCellSignalStrength();
-                        identity = nr.getCellIdentity();
-                        data.put("Type", "5G");
-
-                    } else if (cellInfo instanceof CellInfoGsm) {
-                        CellInfoGsm gsm = (CellInfoGsm) cellInfo;
-                        strength = gsm.getCellSignalStrength();
-                        identity = gsm.getCellIdentity();
-                        data.put("Type", "GSM");
-                    }
-
-                    if (strength != null && identity != null) {
                         data.put("Level", strength.getLevel());
                         data.put("ASU Level", strength.getAsuLevel());
 
-                        if (strength instanceof CellSignalStrengthLte && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                            CellSignalStrengthLte lteSignal = (CellSignalStrengthLte) strength;
-                            data.put("RSRP", lteSignal.getRsrp());
-                            data.put("RSRQ", lteSignal.getRsrq());
-                            data.put("RSSI", lteSignal.getRssi());
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                            data.put("RSRP", strength.getRsrp());
+                            data.put("RSRQ", strength.getRsrq());
+                            data.put("RSSI", strength.getRssi());
                         }
 
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && strength instanceof CellSignalStrengthNr) {
-                            CellSignalStrengthNr nrSignal = (CellSignalStrengthNr) strength;
-                            data.put("RSRP", nrSignal.getCsiRsrp());
-                            data.put("RSRQ", nrSignal.getCsiRsrq());
-                        }
+                        int ci = identity.getCi();
+                        data.put("Cell ID", ci == CellInfo.UNAVAILABLE ? null : ci);
+                        data.put("MCC", identity.getMccString());
+                        data.put("MNC", identity.getMncString());
+                        data.put("TAC", identity.getTac());
+                        data.put("PCI", identity.getPci());
 
-                        if (cellInfo instanceof CellInfoLte && cellInfo.isRegistered()) {
-                            CellInfoLte lte = (CellInfoLte) cellInfo;
-                            CellIdentityLte lteId = lte.getCellIdentity();
+                    } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && cellInfo instanceof CellInfoNr) {
+                        CellInfoNr nr = (CellInfoNr) cellInfo;
+                        CellSignalStrengthNr strength = (CellSignalStrengthNr) nr.getCellSignalStrength();
+                        CellIdentityNr identity = (CellIdentityNr) nr.getCellIdentity();
 
-                            int ci = lteId.getCi();
+                        data.put("Type", "5G");
+                        data.put("Level", strength.getLevel());
+                        data.put("ASU Level", strength.getAsuLevel());
+                        data.put("RSRP", strength.getCsiRsrp());
+                        data.put("RSRQ", strength.getCsiRsrq());
 
-                            if (ci == CellInfo.UNAVAILABLE) {
-                                data.put("Cell ID", null);
-                            } else {
-                                data.put("Cell ID", ci);
-                            }
-                            data.put("MCC", lteId.getMccString());
-                            data.put("MNC", lteId.getMncString());
-                        }
+                        data.put("Cell ID", identity.getNci());
+                        data.put("MCC", identity.getMccString());
+                        data.put("MNC", identity.getMncString());
+                        data.put("TAC", identity.getTac());
+                        data.put("PCI", identity.getPci());
 
-                        if (identity instanceof CellIdentityLte) {
-                            CellIdentityLte lteId = (CellIdentityLte) identity;
+                    } else if (cellInfo instanceof CellInfoGsm) {
+                        CellInfoGsm gsm = (CellInfoGsm) cellInfo;
+                        CellSignalStrengthGsm strength = gsm.getCellSignalStrength();
+                        CellIdentityGsm identity = gsm.getCellIdentity();
 
-                            data.put("TAC", lteId.getTac());
-                            data.put("PCI", lteId.getPci());
+                        data.put("Type", "GSM");
+                        data.put("Level", strength.getLevel());
+                        data.put("ASU Level", strength.getAsuLevel());
 
-                        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && identity instanceof CellIdentityNr) {
-                            CellIdentityNr nrId = (CellIdentityNr) identity;
-                            data.put("Cell ID", nrId.getNci());
-                            data.put("TAC", nrId.getTac());
-                            data.put("PCI", nrId.getPci());
-                        }
+                        data.put("Cell ID", identity.getCid() == CellInfo.UNAVAILABLE ? null : identity.getCid());
+                        data.put("MCC", identity.getMccString());
+                        data.put("MNC", identity.getMncString());
+                        data.put("LAC", identity.getLac());
                     }
+
+                    break;
                 }
             }
 
@@ -192,11 +214,9 @@ public class SignalService extends Service {
             data.put("cellInfoError", e.toString());
         }
 
-        // Location
         getLocationAndSend(data);
     }
 
-    // Get device current location (lon, lat, alt)
     private void getLocationAndSend(Map<String, Object> data) {
 
         if (!isLocationEnabled()) {
@@ -208,7 +228,6 @@ public class SignalService extends Service {
 
         long now = System.currentTimeMillis();
 
-        // throttle GPS requests
         if (now - lastLocationRequestTime < 2500) {
             data.put("Accuracy", -1);
             data.put("IndoorOutdoor", "Cached");
@@ -217,13 +236,6 @@ public class SignalService extends Service {
         }
 
         lastLocationRequestTime = now;
-
-        // Try to get fresh high-accuracy location first
-        com.google.android.gms.location.LocationRequest request =
-                com.google.android.gms.location.LocationRequest.create()
-                        .setPriority(com.google.android.gms.location.LocationRequest.PRIORITY_HIGH_ACCURACY)
-                        .setNumUpdates(1)
-                        .setInterval(0);
 
         fusedLocationClient.getCurrentLocation(
                 com.google.android.gms.location.LocationRequest.PRIORITY_HIGH_ACCURACY,
@@ -235,7 +247,6 @@ public class SignalService extends Service {
                 float acc = location.getAccuracy();
                 long age = System.currentTimeMillis() - location.getTime();
 
-                // Accept only good + fresh locations
                 if (acc <= 70 && age < 15000) {
 
                     lastLat = location.getLatitude();
@@ -250,7 +261,6 @@ public class SignalService extends Service {
                 }
             }
 
-            // Fallback if fresh location is bad or null
             fallbackToLastLocation(data);
 
         }).addOnFailureListener(e -> {
@@ -267,7 +277,6 @@ public class SignalService extends Service {
 
                         float acc = location.getAccuracy();
 
-                        // accept even if slightly worse (fallback mode)
                         if (acc <= 100) {
                             lastLat = location.getLatitude();
                             lastLng = location.getLongitude();
@@ -281,7 +290,6 @@ public class SignalService extends Service {
                         }
                     }
 
-                    // total failure → use cached
                     data.put("Accuracy", -1);
                     data.put("IndoorOutdoor", "Unknown");
 
@@ -295,7 +303,6 @@ public class SignalService extends Service {
                 });
     }
 
-    // Estimate Indoors/Outdoors
     private String estimateIndoorOutdoor(Location location) {
         if (location == null) return "Unknown";
 
@@ -315,11 +322,14 @@ public class SignalService extends Service {
         data.put("Longitude", lastLng);
         data.put("Altitude", lastAlt);
 
+        if (batcher != null) {
+            batcher.addReading(data);
+        }
+
         sendToFlutter(data);
         isRunning = false;
     }
 
-    // Helper functions
     private String getNetworkTypeName(int type) {
         switch (type) {
             case TelephonyManager.NETWORK_TYPE_LTE: return "LTE";
@@ -370,6 +380,10 @@ public class SignalService extends Service {
 
     @Override
     public void onDestroy() {
+        if (batcher != null) {
+            batcher.flushAll();
+            batcher.stop();
+        }
         if (timer != null) {
             timer.cancel();
             timer = null;
@@ -377,12 +391,15 @@ public class SignalService extends Service {
         executor.shutdown();
         stopForeground(true);
         isRunning = false;
+        instance = null;
         super.onDestroy();
     }
 
     @Override
     public void onTaskRemoved(Intent rootIntent) {
-        stopSelf();
+        if (batcher != null) {
+            batcher.flushAll();
+        }
         super.onTaskRemoved(rootIntent);
     }
 

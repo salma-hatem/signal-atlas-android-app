@@ -41,7 +41,7 @@ class LoggingProvider extends ChangeNotifier {
     if (_manager.isLogging) {
       await _manager.stopLogging();
     } else {
-      _manager.startLogging();
+      await _manager.startLogging();
     }
     notifyListeners();
   }

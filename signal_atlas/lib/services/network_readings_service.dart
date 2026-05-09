@@ -1,6 +1,3 @@
-// This class handles business logic related to network readings
-// It holds a list of NetworkReading and uses a Stream to notify provider(s) when new data is available
-
 import 'dart:async';
 import 'package:flutter/cupertino.dart';
 import '../models/network_reading.dart';
@@ -8,16 +5,19 @@ import '../services/geocoding_service.dart';
 import 'package:signal_atlas/utilities/constants.dart';
 
 class NetworkReadingsService {
-  final List<NetworkReading> _readings = [];  // private list
-  List<NetworkReading> get readings => List.unmodifiable(_readings); // public getter
+  final List<NetworkReading> _readings = [];
+  static const int _maxReadings = 500;
+  List<NetworkReading> get readings => List.unmodifiable(_readings);
   NetworkReading? get latestReading => _readings.isNotEmpty ? _readings.last : null;
 
-  // A stream is used to notify subscribers when new data is available
   final _readingController = StreamController<NetworkReading>.broadcast();
   Stream<NetworkReading> get readingStream => _readingController.stream;
 
+  int _samplesSentCount = 0;
+  int get samplesSentCount => _samplesSentCount;
+  final _samplesCountController = StreamController<int>.broadcast();
+  Stream<int> get samplesCountStream => _samplesCountController.stream;
 
-  // Set up background service to collect data in the background
   Future<void> startBackgroundService() async {
     try {
       await AndroidChannel.channel.invokeMethod("startService");
@@ -26,7 +26,6 @@ class NetworkReadingsService {
     }
   }
 
-  // Stop data collection in the background
   Future<void> stopBackgroundService() async {
     try {
       await AndroidChannel.channel.invokeMethod('stopService');
@@ -35,39 +34,62 @@ class NetworkReadingsService {
     }
   }
 
-  // Request battery optimization
+  Future<void> startBatching() async {
+    try {
+      await AndroidChannel.channel.invokeMethod("startBatching", {
+        "baseUrl": ApiConfig.baseUrl,
+        "apiKey": ApiConfig.apiKey,
+      });
+    } catch (e) {
+      debugPrint("Failed to start batching: $e");
+    }
+  }
+
+  Future<int> stopBatching() async {
+    try {
+      final count = await AndroidChannel.channel.invokeMethod<int>("stopBatching");
+      _samplesSentCount = count ?? _samplesSentCount;
+      _samplesCountController.add(_samplesSentCount);
+      return _samplesSentCount;
+    } catch (e) {
+      debugPrint("Failed to stop batching: $e");
+      return _samplesSentCount;
+    }
+  }
+
   Future<void> requestBatteryOptimization() async {
     await AndroidChannel.channel.invokeMethod("requestBatteryOptimization");
   }
 
-
-  // Append list
-  void addReading(NetworkReading reading) {
-    _readings.add(reading);
+  void updateSamplesCount(int count) {
+    _samplesSentCount = count;
+    _samplesCountController.add(count);
   }
 
-  // Add reading from Raw Data
+  void addReading(NetworkReading reading) {
+    _readings.add(reading);
+    if (_readings.length > _maxReadings) {
+      _readings.removeRange(0, _readings.length - _maxReadings);
+    }
+  }
+
   Future<void> addReadingFromRawData(Map<String, dynamic> rawData) async {
+    final locationData = await GeocodingService.getCityCountry(
+        rawData["Latitude"], rawData["Longitude"]);
 
-    // Reverse geocode
-    final locationData = await GeocodingService.getCityCountry(rawData["Latitude"], rawData["Longitude"]);
-
-    // Merge location info into rawData
     final completeRawData = {
-      ...rawData, // existing raw fields
-      'city': locationData['city'],   // add city
-      'country': locationData['country'], // add country
+      ...rawData,
+      'city': locationData['city'],
+      'country': locationData['country'],
     };
 
-    // Create model
     try {
       final reading = NetworkReading.fromRaw(completeRawData);
-
-      // Store it
       _readings.add(reading);
-      // Add to stream
+      if (_readings.length > _maxReadings) {
+        _readings.removeRange(0, _readings.length - _maxReadings);
+      }
       _readingController.add(reading);
-
     } catch (e) {
       debugPrint("MODEL CRASH: $e");
     }
