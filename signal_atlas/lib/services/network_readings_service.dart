@@ -1,80 +1,95 @@
-// This class handles business logic related to network readings
-// It holds a list of NetworkReading and uses a Stream to notify provider(s) when new data is available
-
 import 'dart:async';
 import 'package:flutter/cupertino.dart';
-import 'package:flutter/services.dart';
-import 'package:permission_handler/permission_handler.dart';
 import '../models/network_reading.dart';
 import '../services/geocoding_service.dart';
+import 'package:signal_atlas/utilities/constants.dart';
 
 class NetworkReadingsService {
-  final List<NetworkReading> _readings = [];  // private list
-  List<NetworkReading> get readings => List.unmodifiable(_readings); // public getter
+  final List<NetworkReading> _readings = [];
+  static const int _maxReadings = 500;
+  List<NetworkReading> get readings => List.unmodifiable(_readings);
   NetworkReading? get latestReading => _readings.isNotEmpty ? _readings.last : null;
 
-  // A stream is used to notify subscribers when new data is available
   final _readingController = StreamController<NetworkReading>.broadcast();
   Stream<NetworkReading> get readingStream => _readingController.stream;
 
-  static const _channel = MethodChannel('com.example.signal_atlas');
+  int _samplesSentCount = 0;
+  int get samplesSentCount => _samplesSentCount;
+  final _samplesCountController = StreamController<int>.broadcast();
+  Stream<int> get samplesCountStream => _samplesCountController.stream;
 
-  NetworkReadingsService() {
-    requestPermissions();
-    setupChannelListener();
+  Future<void> startBackgroundService() async {
+    try {
+      await AndroidChannel.channel.invokeMethod("startService");
+    } catch (e) {
+      debugPrint("Failed to start service: $e");
+    }
   }
 
-  // Set up channel for communication with Android (for data collecting using APIS)
-  void setupChannelListener() {
-    _channel.setMethodCallHandler((call) async {
-      try {
-        if (call.method == 'newNetworkReading') {
-          final rawData = Map<String, dynamic>.from(call.arguments ?? {});
-          await addReadingFromRawData(rawData);
-        }
-      } catch (e) {
-        debugPrint("METHOD CHANNEL CRASH: $e");
-      }
-    });
+  Future<void> stopBackgroundService() async {
+    try {
+      await AndroidChannel.channel.invokeMethod('stopService');
+    } catch (e) {
+      debugPrint("Failed to stop service: $e");
+    }
   }
 
-  // Request permissions required by the data collecting APIs
-  Future<void> requestPermissions() async {
-    await [
-      Permission.location,
-      Permission.phone,
-    ].request();
+  Future<void> startBatching() async {
+    try {
+      await AndroidChannel.channel.invokeMethod("startBatching", {
+        "baseUrl": ApiConfig.baseUrl,
+        "apiKey": ApiConfig.apiKey,
+      });
+    } catch (e) {
+      debugPrint("Failed to start batching: $e");
+    }
   }
 
-  // Append list
+  Future<int> stopBatching() async {
+    try {
+      final count = await AndroidChannel.channel.invokeMethod<int>("stopBatching");
+      _samplesSentCount = count ?? _samplesSentCount;
+      _samplesCountController.add(_samplesSentCount);
+      return _samplesSentCount;
+    } catch (e) {
+      debugPrint("Failed to stop batching: $e");
+      return _samplesSentCount;
+    }
+  }
+
+  Future<void> requestBatteryOptimization() async {
+    await AndroidChannel.channel.invokeMethod("requestBatteryOptimization");
+  }
+
+  void updateSamplesCount(int count) {
+    _samplesSentCount = count;
+    _samplesCountController.add(count);
+  }
+
   void addReading(NetworkReading reading) {
     _readings.add(reading);
+    if (_readings.length > _maxReadings) {
+      _readings.removeRange(0, _readings.length - _maxReadings);
+    }
   }
 
-  // Add reading from Raw Data
   Future<void> addReadingFromRawData(Map<String, dynamic> rawData) async {
+    final locationData = await GeocodingService.getCityCountry(
+        rawData["Latitude"], rawData["Longitude"]);
 
-    // Reverse geocode
-    final locationData = await GeocodingService.getCityCountry(rawData["Latitude"], rawData["Longitude"]);
-
-    // Merge location info into rawData
     final completeRawData = {
-      ...rawData, // existing raw fields
-      'city': locationData['city'],   // add city
-      'country': locationData['country'], // add country
+      ...rawData,
+      'city': locationData['city'],
+      'country': locationData['country'],
     };
 
-    // Create model
     try {
       final reading = NetworkReading.fromRaw(completeRawData);
       _readings.add(reading);
+      if (_readings.length > _maxReadings) {
+        _readings.removeRange(0, _readings.length - _maxReadings);
+      }
       _readingController.add(reading);
-
-      // Store it
-      _readings.add(reading);
-      // Add to stream
-      _readingController.add(reading);
-
     } catch (e) {
       debugPrint("MODEL CRASH: $e");
     }
