@@ -42,8 +42,6 @@ void main() async {
 
   platformService.init();
 
-  await permissionService.requestAll();
-
   runApp(
     MultiProvider(
       providers: [
@@ -62,4 +60,9 @@ void main() async {
       child: const App(),
     ),
   );
+
+  WidgetsBinding.instance.addPostFrameCallback((_) async {
+    await permissionService.requestAll();
+    await readingsService.startBackgroundService();
+  });
 }
