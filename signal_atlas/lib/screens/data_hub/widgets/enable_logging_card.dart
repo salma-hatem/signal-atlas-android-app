@@ -19,7 +19,7 @@ class LoggingCard extends StatelessWidget {
     final textTheme = Theme.of(context).textTheme;
 
     Future<void> toggleLogging() async {
-      if (!canLog) {
+      if (!context.read<LoggingProvider>().canLog) {
         showCustomSnackBar(context, "Server is offline");
         return;
       }

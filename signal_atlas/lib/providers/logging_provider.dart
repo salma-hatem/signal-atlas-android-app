@@ -20,13 +20,11 @@ class LoggingProvider extends ChangeNotifier {
       ) : _manager = LoggingManager(readingService, sessionProvider, notificationsPlugin,) {
     sessionProvider.attachLoggingManager(_manager);
 
-    // listen to stop logging if server offline
     _serverListener = () {
-      if (serverHealthProvider.state != ServerState.success &&
-          _manager.isLogging) {
+      if (serverHealthProvider.state != ServerState.success && _manager.isLogging) {
         _manager.stopLogging();
-        notifyListeners();
       }
+      notifyListeners();
     };
 
     serverHealthProvider.addListener(_serverListener);
