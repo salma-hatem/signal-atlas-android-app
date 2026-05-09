@@ -15,6 +15,7 @@ import 'widgets/session_duration_text.dart';
 import 'package:signal_atlas/widgets/custom_snackbar.dart';
 import 'package:signal_atlas/widgets/shimmer_box.dart';
 import 'package:signal_atlas/utilities/timestamp_format.dart';
+import 'package:signal_atlas/widgets/line_chart.dart';
 
 class DataHubPage extends StatefulWidget {
   const DataHubPage({
@@ -83,9 +84,9 @@ class _DataHubPageState extends State<DataHubPage> {
               curve: Curves.easeInOut,
               child: ClipRect(
                 child: Align(
-                  heightFactor: isLoggingEnabled ? 1.0 : 1.0,
+                  heightFactor: isLoggingEnabled ? 1.0 : 0,
                   child: Opacity(
-                    opacity: isLoggingEnabled ? 1.0 : 1.0,
+                    opacity: isLoggingEnabled ? 1.0 : 0,
                     child: Column(
                         children: [
                           Card(
@@ -142,7 +143,7 @@ class _DataHubPageState extends State<DataHubPage> {
                                         SessionStat(
                                             tooltip: 'Device Speed',
                                             title: 'm/s',
-                                            value:  _formatSpeed(loggingProvider.currentSpeedKmh),
+                                            value:  _formatSpeed(loggingProvider.currentSpeedMps),
                                             colorScheme: colorScheme
                                           ),
 

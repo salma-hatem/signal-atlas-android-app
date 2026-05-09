@@ -4,6 +4,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 import 'api_service.dart';
+import 'location_tracking_service.dart';
 import 'network_readings_service.dart';
 import '../providers/sessions_provider.dart';
 import '../models/network_reading.dart';
@@ -13,6 +14,7 @@ class LoggingManager extends ChangeNotifier {
   final NetworkReadingsService readingsService;
   final SessionProvider sessionProvider;
   final FlutterLocalNotificationsPlugin notificationsPlugin;
+  final LocationTrackingService locationService;
 
   Timer? timer;
   Duration _sendInterval = Duration(seconds: 2);
@@ -32,6 +34,7 @@ class LoggingManager extends ChangeNotifier {
 
   LoggingManager(
       this.readingsService,
+      this.locationService,
       this.sessionProvider,
       this.notificationsPlugin,
       {this.batchSize = 2}
@@ -136,7 +139,7 @@ class LoggingManager extends ChangeNotifier {
   void _scheduleNextTick() {
     if (!_isLogging) return;
 
-    final speed = currentSpeedMps ?? 0.0;
+    final speed = effectiveSpeedMps;
     _sendInterval = _calculateInterval(speed);
 
     timer = Timer(_sendInterval, () async {
@@ -184,7 +187,7 @@ class LoggingManager extends ChangeNotifier {
       return _calculateStationaryInterval();
     }
 
-    // hysteresis zone → DO NOT reset timers
+    // hysteresis zone -> DO NOT reset timers
     if (_stationarySince != null) {
       return _calculateStationaryInterval();
     } else {
@@ -193,9 +196,9 @@ class LoggingManager extends ChangeNotifier {
   }
 
   Duration _calculateMovingInterval(double speed) {
-    if (speed < 3) return const Duration(seconds: 6);
-    if (speed < 8) return const Duration(seconds: 4);
-    if (speed < 20) return const Duration(seconds: 3);
+    // if (speed < 3) return const Duration(seconds: 6);
+    // if (speed < 8) return const Duration(seconds: 4);
+    // if (speed < 20) return const Duration(seconds: 3);
 
     return const Duration(milliseconds: 2500); // hardware limit
   }
@@ -205,22 +208,41 @@ class LoggingManager extends ChangeNotifier {
 
     _stationarySince ??= now;
 
-    final secondsStationary = now.difference(_stationarySince!).inSeconds;
+    final secondsStationary =
+        now.difference(_stationarySince!).inSeconds;
 
-    const base = 4.0;     // start at 4 seconds
-    const growth = 1.5;   // exponential factor
+    // First 10 minutes: keep interval fixed
+    const stationaryGracePeriod = 600; // 10 min
 
-    final exponent = (secondsStationary / 30).clamp(0, 10);
-    final intervalSeconds = base * pow(growth, exponent);
+    if (secondsStationary < stationaryGracePeriod) {
+      return const Duration(milliseconds: 2500);
+    }
 
-    final capped = intervalSeconds.clamp(4, 600); // 4s -> 10 min
+    // After 10 minutes: begin exponential backoff
+    final growthSeconds =
+        secondsStationary - stationaryGracePeriod;
+
+    const base = 2.5;
+    const growth = 1.5;
+
+    final exponent = (growthSeconds / 30).clamp(0, 10);
+
+    final intervalSeconds =
+        base * pow(growth, exponent);
+
+    final capped = intervalSeconds.clamp(2.5, 600);
 
     return Duration(seconds: capped.toInt());
   }
 
-  double? get currentSpeedMps {
-    return readingsService.latestReading?.speedMps;
+  double get effectiveSpeedMps {
+    final readingSpeed = readingsService.latestReading?.speedMps ?? 0.0;
+    final gpsSpeed = locationService.speedMps.value;
+
+    return max(readingSpeed, gpsSpeed);
   }
+
+  double get currentSpeedMps => effectiveSpeedMps;
 
   double get currentSendingRatePerMinute {
     final seconds = _sendInterval.inMilliseconds / 1000;

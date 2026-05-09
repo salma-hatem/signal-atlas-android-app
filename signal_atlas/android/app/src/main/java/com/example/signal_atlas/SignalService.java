@@ -11,14 +11,11 @@ import android.os.Build;
 import android.os.IBinder;
 import android.provider.Settings;
 import android.telephony.*;
-import io.flutter.plugin.common.MethodChannel;
+
 import androidx.core.app.ActivityCompat;
 import androidx.core.app.NotificationCompat;
 import com.google.android.gms.location.*;
-import android.hardware.Sensor;
-import android.hardware.SensorEvent;
-import android.hardware.SensorEventListener;
-import android.hardware.SensorManager;
+import io.flutter.plugin.common.MethodChannel;
 
 import java.util.*;
 import java.util.concurrent.ExecutorService;
@@ -34,17 +31,16 @@ public class SignalService extends Service {
 
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
 
-    private long lastLocationRequestTime = 0;
-
     private Double lastLat = null, lastLng = null, lastAlt = null;
-    private SensorManager sensorManager;
-    private Sensor stepSensor;
+    private volatile float latestAccuracy = -1;
+    private volatile String latestIndoorOutdoor = "Unknown";
 
-    private int stepCount = 0;
-    private long lastStepTime = 0;
-    private Float lastStepSpeed = null;
-    private long lastStepDetectedTime = 0;
-    private Float smoothedStepSpeed = null;
+    // SPEED STATE
+    private Location lastLocation = null;
+    private long lastTime = 0;
+    private volatile double latestSpeedMps = 0;
+
+    private LocationCallback locationCallback;
 
     @Override
     public void onCreate() {
@@ -53,12 +49,7 @@ public class SignalService extends Service {
         telephonyManager = (TelephonyManager) getSystemService(Context.TELEPHONY_SERVICE);
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
 
-        sensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
-        stepSensor = sensorManager.getDefaultSensor(Sensor.TYPE_STEP_DETECTOR);
-
-        if (stepSensor != null) {
-            sensorManager.registerListener(stepListener, stepSensor, SensorManager.SENSOR_DELAY_NORMAL);
-        }
+        startLocationTracking();
     }
 
     @Override
@@ -67,6 +58,7 @@ public class SignalService extends Service {
         createNotificationChannel();
         startForeground(1, createNotification());
 
+        startLocationTracking();
         startCollecting();
 
         return START_NOT_STICKY;
@@ -76,8 +68,8 @@ public class SignalService extends Service {
     private void startCollecting() {
         if (timer != null) {
             timer.cancel();
-            timer = null;
         }
+
         timer = new Timer();
         timer.scheduleAtFixedRate(new TimerTask() {
             @Override
@@ -87,16 +79,18 @@ public class SignalService extends Service {
         }, 0, 2500);
     }
 
-    // Get data using TelephonyManager and Location APIs
     private void collectData() {
+
         if (isRunning) return;
         isRunning = true;
 
         Map<String, Object> data = new HashMap<>();
 
         // Permissions
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.READ_PHONE_STATE) != PackageManager.PERMISSION_GRANTED ||
-                ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.READ_PHONE_STATE)
+                != PackageManager.PERMISSION_GRANTED ||
+                ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
+                        != PackageManager.PERMISSION_GRANTED) {
 
             data.put("error", "Permissions not granted");
             sendToFlutter(data);
@@ -117,7 +111,7 @@ public class SignalService extends Service {
             data.put("Operator", "unknown");
         }
 
-
+        // Network type
         try {
             int networkType = (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R)
                     ? telephonyManager.getDataNetworkType()
@@ -209,143 +203,83 @@ public class SignalService extends Service {
             data.put("cellInfoError", e.toString());
         }
 
+        // Final speed
+        data.put("Speed_mps", latestSpeedMps);
+
         // Location
-        getLocationAndSend(data);
+        data.put("Latitude", lastLat);
+        data.put("Longitude", lastLng);
+        data.put("Altitude", lastAlt);
+
+        // GPS accuracy
+        data.put("Accuracy", latestAccuracy);
+        data.put("IndoorOutdoor", latestIndoorOutdoor);
+
+        sendToFlutter(data);
+        isRunning = false;
     }
 
     // Get device current location (lon, lat, alt)
-    private void getLocationAndSend(Map<String, Object> data) {
+    private void startLocationTracking() {
 
-        if (!isLocationEnabled()) {
-            data.put("Accuracy", -1);
-            data.put("IndoorOutdoor", "Unknown");
-            sendWithCachedLocation(data);
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
+                != PackageManager.PERMISSION_GRANTED) {
             return;
         }
 
-        long now = System.currentTimeMillis();
+        LocationRequest request =
+                LocationRequest.create()
+                        .setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY)
+                        .setInterval(1000)
+                        .setFastestInterval(500);
 
-        // throttle GPS requests
-        if (now - lastLocationRequestTime < 2500) {
-            data.put("Accuracy", -1);
-            data.put("IndoorOutdoor", "Cached");
-            sendWithCachedLocation(data);
-            return;
-        }
+        locationCallback = new LocationCallback() {
+            @Override
+            public void onLocationResult(LocationResult result) {
 
-        lastLocationRequestTime = now;
+                Location location = result.getLastLocation();
+                if (location == null) return;
 
-        // Try to get fresh high-accuracy location first
-        com.google.android.gms.location.LocationRequest request =
-                com.google.android.gms.location.LocationRequest.create()
-                        .setPriority(com.google.android.gms.location.LocationRequest.PRIORITY_HIGH_ACCURACY)
-                        .setNumUpdates(1)
-                        .setInterval(0);
-
-        fusedLocationClient.getCurrentLocation(
-                com.google.android.gms.location.LocationRequest.PRIORITY_HIGH_ACCURACY,
-                null
-        ).addOnSuccessListener(location -> {
-
-            if (location != null) {
-                float finalSpeed;
-
-                boolean isWalkingRecently = (System.currentTimeMillis() - lastStepDetectedTime) < 3000;
-
-                if (location.hasSpeed() && location.getSpeed() > 2.0f) {
-                    // vehicle
-                    finalSpeed = location.getSpeed();
-
-                } else if (isWalkingRecently && lastStepSpeed != null) {
-                    // walking
-                    finalSpeed = lastStepSpeed;
-
-                } else {
-                    // still
-                    finalSpeed = 0f;
+                if (location.getAccuracy() > 100) {
+                    return; // ignore bad GPS fix
                 }
 
-                data.put("Speed_mps", finalSpeed);
+                // Save coordinates
+                lastLat = location.getLatitude();
+                lastLng = location.getLongitude();
+                lastAlt = location.hasAltitude() ? location.getAltitude() : null;
 
-                float acc = location.getAccuracy();
-                long age = System.currentTimeMillis() - location.getTime();
+                // Accuracy classification
+                latestAccuracy = location.getAccuracy();
+                latestIndoorOutdoor = estimateIndoorOutdoor(location);
 
-                // Accept only good + fresh locations
-                if (acc <= 70 && age < 15000) {
+                long now = System.currentTimeMillis();
 
-                    lastLat = location.getLatitude();
-                    lastLng = location.getLongitude();
-                    lastAlt = location.hasAltitude() ? location.getAltitude() : null;
+                double speed = 0;
 
-                    data.put("Accuracy", acc);
-                    data.put("IndoorOutdoor", estimateIndoorOutdoor(location));
+                if (lastLocation != null) {
+                    double distance = lastLocation.distanceTo(location);
+                    double timeSec = (now - lastTime) / 1000.0;
 
-                    sendWithCachedLocation(data);
-                    return;
-                }
-            }
-
-            // Fallback if fresh location is bad or null
-            fallbackToLastLocation(data);
-
-        }).addOnFailureListener(e -> {
-            fallbackToLastLocation(data);
-        });
-    }
-
-    private void fallbackToLastLocation(Map<String, Object> data) {
-
-        fusedLocationClient.getLastLocation()
-                .addOnSuccessListener(location -> {
-
-                    if (location != null) {
-                        float finalSpeed;
-
-                        boolean isWalkingRecently = (System.currentTimeMillis() - lastStepDetectedTime) < 3000;
-
-                        if (location.hasSpeed() && location.getSpeed() > 3.0f) {
-                            // vehicle
-                            finalSpeed = location.getSpeed();
-
-                        } else if (isWalkingRecently && lastStepSpeed != null) {
-                            // walking
-                            finalSpeed = lastStepSpeed;
-
-                        } else {
-                            // still
-                            finalSpeed = 0f;
-                        }
-
-                        data.put("Speed_mps", finalSpeed);
-
-                        float acc = location.getAccuracy();
-
-                        // accept even if slightly worse (fallback mode)
-                        if (acc <= 100) {
-                            lastLat = location.getLatitude();
-                            lastLng = location.getLongitude();
-                            lastAlt = location.hasAltitude() ? location.getAltitude() : null;
-
-                            data.put("Accuracy", acc);
-                            data.put("IndoorOutdoor", estimateIndoorOutdoor(location));
-
-                            sendWithCachedLocation(data);
-                            return;
-                        }
+                    if (timeSec > 0) {
+                        speed = distance / timeSec;
                     }
+                }
 
-                    // total failure → use cached
-                    data.put("Accuracy", -1);
-                    data.put("IndoorOutdoor", "Unknown");
+                latestSpeedMps = (latestSpeedMps == 0)
+                        ? speed
+                        : (latestSpeedMps * 0.8) + (speed * 0.2);
 
-                    sendWithCachedLocation(data);
+                lastLocation = location;
+                lastTime = now;
+            }
+        };
 
-                })
-                .addOnFailureListener(e -> {
-                    data.put("Accuracy", -1);
-                    data.put("IndoorOutdoor", "Unknown");
-                    sendWithCachedLocation(data);
-                });
+        fusedLocationClient.requestLocationUpdates(
+                request,
+                locationCallback,
+                getMainLooper()
+        );
     }
 
     // Estimate Indoors/Outdoors
@@ -363,53 +297,6 @@ public class SignalService extends Service {
         }
     }
 
-    private void sendWithCachedLocation(Map<String, Object> data) {
-        data.put("Latitude", lastLat);
-        data.put("Longitude", lastLng);
-        data.put("Altitude", lastAlt);
-
-        sendToFlutter(data);
-        isRunning = false;
-    }
-
-    // Movement sensor for better speed estimation while walking
-    private final SensorEventListener stepListener = new SensorEventListener() {
-        @Override
-        public void onSensorChanged(SensorEvent event) {
-            stepCount++;
-
-            long now = System.currentTimeMillis();
-
-            if (lastStepTime != 0) {
-                long delta = now - lastStepTime;
-
-                float stepFrequency = 1000f / delta; // steps per second (Hz)
-                float stepLength = 0.65f + (stepFrequency * 0.1f);
-                float speed = stepLength / (delta / 1000f); // m/s
-
-                // filter unrealistic values
-                if (speed > 0 && speed < 3.5f) {
-
-                    float alpha = 0.3f;
-
-                    if (smoothedStepSpeed == null) {
-                        smoothedStepSpeed = speed;
-                    } else {
-                        smoothedStepSpeed = alpha * speed + (1 - alpha) * smoothedStepSpeed;
-                    }
-
-                    lastStepSpeed = smoothedStepSpeed;
-                }
-            }
-
-            lastStepTime = now;
-            lastStepDetectedTime = now;
-        }
-
-        @Override
-        public void onAccuracyChanged(Sensor sensor, int accuracy) {}
-    };
-
     // Helper functions
     private String getNetworkTypeName(int type) {
         switch (type) {
@@ -422,14 +309,7 @@ public class SignalService extends Service {
         }
     }
 
-    private boolean isLocationEnabled() {
-        LocationManager lm = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
-        return lm.isProviderEnabled(LocationManager.GPS_PROVIDER) ||
-                lm.isProviderEnabled(LocationManager.NETWORK_PROVIDER);
-    }
-
     private void sendToFlutter(Map<String, Object> data) {
-
         if (MainActivity.sharedEngine == null) return;
 
         new android.os.Handler(getMainLooper()).post(() -> {
@@ -442,6 +322,7 @@ public class SignalService extends Service {
         });
     }
 
+    // Notifications
     private Notification createNotification() {
         return new NotificationCompat.Builder(this, "signal_channel")
                 .setContentTitle("Signal Atlas Running")
@@ -463,26 +344,23 @@ public class SignalService extends Service {
         }
     }
 
+    // Clean up
     @Override
     public void onDestroy() {
 
-        if (timer != null) {
-            timer.cancel();
-            timer = null;
-        }
+        if (timer != null) timer.cancel();
 
-        if (sensorManager != null) {
-            sensorManager.unregisterListener(stepListener);
+        if (fusedLocationClient != null && locationCallback != null) {
+            fusedLocationClient.removeLocationUpdates(locationCallback);
         }
 
         executor.shutdownNow();
 
         stopForeground(true);
 
-        isRunning = false;
-
         super.onDestroy();
     }
+
     @Override
     public IBinder onBind(Intent intent) {
         return null;

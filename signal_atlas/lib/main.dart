@@ -4,6 +4,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:provider/provider.dart';
 import 'package:signal_atlas/services/device_service.dart';
 import 'package:signal_atlas/services/dashboard_service.dart';
+import 'package:signal_atlas/services/location_tracking_service.dart';
 import 'package:signal_atlas/services/platform_channel_service.dart';
 import 'package:signal_atlas/services/sessions_service.dart';
 import 'package:signal_atlas/services/permission_service.dart';
@@ -39,6 +40,8 @@ void main() async {
     readingsService: readingsService,
     permissionService: permissionService,
   );
+  final locationService = LocationTrackingService();
+  await locationService.start();
 
   platformService.init();
   await platformService.startSetupFlow();
@@ -52,6 +55,7 @@ void main() async {
           readingsService,
           sessionProvider,
           serverHealthProvider,
+          locationService,
           notificationsPlugin,
         )),
         ChangeNotifierProvider(create: (_) => CurrentNetworkReadingProvider(readingsService)),
