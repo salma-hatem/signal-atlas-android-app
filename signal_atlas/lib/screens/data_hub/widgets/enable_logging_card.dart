@@ -15,10 +15,46 @@ class LoggingCard extends StatelessWidget {
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
 
-    void toggleLogging() {
+    Future<void> toggleLogging() async {
       if (!canLog) {
         showCustomSnackBar(context, "Server is offline");
         return;
+      }
+
+      if (!isLoggingEnabled) {
+        final isDisabled = await context.read<LoggingProvider>().isBatteryOptimizationDisabled();
+        if (!isDisabled) {
+          final openSettings = await showDialog<bool>(
+            context: context,
+            builder: (_) => AlertDialog(
+              title: const Text("Battery Optimization"),
+              content: const Text(
+                "For reliable background data collection, please disable "
+                "battery optimization for this app.",
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(false),
+                  child: const Text("Continue anyway"),
+                ),
+                FilledButton(
+                  onPressed: () {
+                    context.read<LoggingProvider>().requestBatteryOptimization();
+                    Navigator.of(context).pop(true);
+                  },
+                  child: const Text("Open Settings"),
+                ),
+              ],
+            ),
+          );
+
+          if (openSettings == true) {
+            showCustomSnackBar(
+              context,
+              "Opened battery settings. Please disable optimization for this app.",
+            );
+          }
+        }
       }
 
       context.read<LoggingProvider>().toggleLogging();

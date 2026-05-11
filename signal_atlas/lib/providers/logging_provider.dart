@@ -11,6 +11,7 @@ import '../services/location_tracking_service.dart';
 
 
 class LoggingProvider extends ChangeNotifier {
+  final NetworkReadingsService _readingService;
   final LoggingManager _manager;
   final ServerHealthProvider serverHealthProvider;
   final SessionProvider sessionProvider;
@@ -19,16 +20,16 @@ class LoggingProvider extends ChangeNotifier {
   final LocationTrackingService locationService;
 
   LoggingProvider(
-      NetworkReadingsService readingService,
+      this._readingService,
       this.sessionProvider,
       this.serverHealthProvider,
       this.locationService,
       FlutterLocalNotificationsPlugin notificationsPlugin,
-      ) : _manager = LoggingManager(readingService, locationService, sessionProvider, notificationsPlugin,) {
+      ) : _manager = LoggingManager(_readingService, locationService, sessionProvider, notificationsPlugin,) {
     sessionProvider.attachLoggingManager(_manager);
 
     // Update UI when new readings arrive in the stream
-    _readingSub = readingService.readingStream.listen((_) {
+    _readingSub = _readingService.readingStream.listen((_) {
       notifyListeners();
     });
 
@@ -60,6 +61,14 @@ class LoggingProvider extends ChangeNotifier {
       _manager.startLogging();
     }
     notifyListeners();
+  }
+
+  Future<void> requestBatteryOptimization() async {
+    await _readingService.requestBatteryOptimization();
+  }
+
+  Future<bool> isBatteryOptimizationDisabled() async {
+    return _readingService.isBatteryOptimizationDisabled();
   }
 
   @override

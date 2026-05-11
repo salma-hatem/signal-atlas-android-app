@@ -1,8 +1,10 @@
 package com.example.signal_atlas;
 
+import android.content.Context;
 import android.content.Intent;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.PowerManager;
 import android.provider.Settings;
 
 import androidx.annotation.NonNull;
@@ -54,8 +56,18 @@ public class MainActivity extends FlutterActivity {
                 stopService(intent);
 
                 result.success(null);
+            } else if (call.method.equals("isBatteryOptimizationDisabled")) {
+                result.success(isBatteryOptimizationDisabled());
             }
         });
+    }
+
+    private boolean isBatteryOptimizationDisabled() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            PowerManager powerManager = (PowerManager) getSystemService(Context.POWER_SERVICE);
+            return powerManager.isIgnoringBatteryOptimizations(getPackageName());
+        }
+        return true;
     }
 
     private void requestBatteryOptimizationDisable() {

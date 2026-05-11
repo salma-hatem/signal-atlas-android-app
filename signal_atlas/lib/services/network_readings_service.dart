@@ -40,6 +40,11 @@ class NetworkReadingsService {
     await AndroidChannel.channel.invokeMethod("requestBatteryOptimization");
   }
 
+  Future<bool> isBatteryOptimizationDisabled() async {
+    final result = await AndroidChannel.channel.invokeMethod<bool>("isBatteryOptimizationDisabled");
+    return result ?? true;
+  }
+
 
   // Append list
   void addReading(NetworkReading reading) {

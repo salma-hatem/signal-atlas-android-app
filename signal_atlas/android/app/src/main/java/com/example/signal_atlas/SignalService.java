@@ -5,6 +5,7 @@ import android.app.*;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.content.pm.ServiceInfo;
 import android.location.Location;
 import android.location.LocationManager;
 import android.os.Build;
@@ -56,7 +57,9 @@ public class SignalService extends Service {
     public int onStartCommand(Intent intent, int flags, int startId) {
 
         createNotificationChannel();
-        startForeground(1, createNotification());
+        startForeground(1, createNotification(),
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION |
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC);
 
         startLocationTracking();
         startCollecting();
