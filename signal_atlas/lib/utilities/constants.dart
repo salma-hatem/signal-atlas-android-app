@@ -12,6 +12,13 @@ enum ServerState {
   error,
 }
 
+enum UploadStatus {
+  idle,
+  retrying,
+  failed,
+  success,
+}
+
 class AndroidChannel {
   static const channel = MethodChannel('com.example.signal_atlas');
 }

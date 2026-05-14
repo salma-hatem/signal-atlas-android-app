@@ -12,6 +12,7 @@ import '../services/location_tracking_service.dart';
 
 class LoggingProvider extends ChangeNotifier {
   final LoggingManager _manager;
+  late VoidCallback _managerListener;
   final ServerHealthProvider serverHealthProvider;
   final SessionProvider sessionProvider;
   late VoidCallback _serverListener;
@@ -42,6 +43,13 @@ class LoggingProvider extends ChangeNotifier {
     };
 
     serverHealthProvider.addListener(_serverListener);
+
+    // listen to update upload status
+    _managerListener = () {
+      notifyListeners();
+    };
+
+    _manager.addListener(_managerListener);
   }
 
   bool get isLogging => _manager.isLogging;
@@ -50,6 +58,9 @@ class LoggingProvider extends ChangeNotifier {
 
   bool get canLog => serverHealthProvider.state == ServerState.success;
 
+  UploadStatus get uploadStatus => _manager.uploadStatus;
+  String? get statusMessage => _manager.statusMessage;
+  int get samplesFailedCount => _manager.samplesFailedCount;
 
   Future<void> toggleLogging() async {
     if (!canLog) return; // block logging if server offline
@@ -67,6 +78,7 @@ class LoggingProvider extends ChangeNotifier {
     _readingSub.cancel();
     serverHealthProvider.removeListener(_serverListener);
     _manager.stopLogging();
+    _manager.removeListener(_managerListener);
     super.dispose();
   }
 }

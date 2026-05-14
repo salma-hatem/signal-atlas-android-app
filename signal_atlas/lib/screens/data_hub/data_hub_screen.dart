@@ -1,21 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/logging_provider.dart';
+import '../../utilities/constants.dart';
 import '../../widgets/page_wrapper.dart';
 
-import 'package:signal_atlas/models/network_reading.dart';
 import 'package:signal_atlas/providers/sessions_provider.dart';
 import 'package:signal_atlas/services/device_service.dart';
 
 import 'widgets/sessions_table.dart';
 import 'widgets/enable_logging_card.dart';
 import 'widgets/server_health_card.dart';
-import 'widgets/session_stat.dart';
-import 'widgets/session_duration_text.dart';
+import 'widgets/current_session_card.dart';
 import 'package:signal_atlas/widgets/custom_snackbar.dart';
 import 'package:signal_atlas/widgets/shimmer_box.dart';
-import 'package:signal_atlas/utilities/timestamp_format.dart';
-import 'package:signal_atlas/widgets/line_chart.dart';
 
 class DataHubPage extends StatefulWidget {
   const DataHubPage({
@@ -27,11 +24,40 @@ class DataHubPage extends StatefulWidget {
 }
 
 class _DataHubPageState extends State<DataHubPage> {
+  UploadStatus _lastStatus = UploadStatus.idle;
+  String? _lastMessage;
 
   @override
   void initState() {
     super.initState();
     Future.microtask(() => context.read<SessionProvider>().loadData());
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+
+    final provider = context.read<LoggingProvider>();
+
+    final message = provider.statusMessage;
+
+    final changed =
+        provider.uploadStatus != _lastStatus ||
+            message != _lastMessage;
+
+    if (changed) {
+
+      _lastStatus = provider.uploadStatus;
+      _lastMessage = message;
+
+      if (message != null) {
+
+        WidgetsBinding.instance
+            .addPostFrameCallback((_) {
+
+        });
+      }
+    }
   }
 
   @override
@@ -42,6 +68,7 @@ class _DataHubPageState extends State<DataHubPage> {
     final sessionsProvider = context.watch<SessionProvider>();
     final loggingProvider = context.watch<LoggingProvider>();
     final isLoggingEnabled = loggingProvider.isLogging;
+    print("STATUS UPLOAD ${_lastStatus}");
 
     return PageWrapper(
       title: "Data Hub",
@@ -79,97 +106,13 @@ class _DataHubPageState extends State<DataHubPage> {
             // ------------------------------------------------
             // Current Session
             // ------------------------------------------------
-            AnimatedSize(
-              duration: const Duration(milliseconds: 300),
-              curve: Curves.easeInOut,
-              child: ClipRect(
-                child: Align(
-                  heightFactor: isLoggingEnabled ? 1.0 : 0,
-                  child: Opacity(
-                    opacity: isLoggingEnabled ? 1.0 : 0,
-                    child: Column(
-                        children: [
-                          Card(
-                            child: Padding(
-                              padding: const EdgeInsets.all(16),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  // ------------------------------------------------
-                                  // Header
-                                  // ------------------------------------------------
-                                  Row(
-                                    children: [
-                                      Icon(Icons.timer_outlined, color: colorScheme.primary),
-                                      const SizedBox(width: 8),
-                                      Expanded(
-                                        child: Text(
-                                          "Current Session",
-                                          style: textTheme.titleMedium?.copyWith(
-                                            fontWeight: FontWeight.w600,
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-
-                                  const SizedBox(height: 12),
-
-                                  // ------------------------------------------------
-                                  // Content
-                                  // ------------------------------------------------
-                                  IntrinsicHeight(
-                                    child: Row(
-                                      children: [
-                                        SessionStat(
-                                          tooltip: 'Session Duration',
-                                          title: 'duration',
-                                          value: '',
-                                          textWidget: SessionDurationText(sessionsProvider),
-                                          colorScheme: colorScheme,
-                                        ),
-
-                                        const SizedBox(width: 4),
-
-                                        SessionStat(
-                                            tooltip: 'Samples Collected',
-                                            title: 'samples',
-                                            value: sessionsProvider.liveSamples.toString(),
-                                            colorScheme: colorScheme,
-                                          ),
-
-                                        const SizedBox(width: 4),
-
-                                        SessionStat(
-                                            tooltip: 'Device Speed',
-                                            title: 'm/s',
-                                            value:  _formatSpeed(loggingProvider.currentSpeedMps),
-                                            colorScheme: colorScheme
-                                          ),
-
-                                        const SizedBox(width: 4),
-
-                                        SessionStat(
-                                            tooltip: 'Samples sent each minute',
-                                            title: 'samples/min',
-                                            value: loggingProvider.currentSendingRatePerMinute.toStringAsFixed(1),
-                                            colorScheme: colorScheme,
-                                          ),
-                                      ],
-                                    ),
-                                  ),
-
-                                ],
-                              ),
-                            ),
-                          ),
-
-                          const SizedBox(height: 12),
-                        ]
-                    ),
-                  ),
-                ),
-              ),
+            CurrentSessionCard(
+              isVisible: isLoggingEnabled,
+              colorScheme: colorScheme,
+              textTheme: textTheme,
+              sessionsProvider: sessionsProvider,
+              loggingProvider: loggingProvider,
+              formatSpeed: _formatSpeed,
             ),
 
             // ------------------------------------------------

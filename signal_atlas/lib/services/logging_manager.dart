@@ -9,6 +9,7 @@ import 'network_readings_service.dart';
 import '../providers/sessions_provider.dart';
 import '../models/network_reading.dart';
 import '../models/sessions.dart';
+import '../utilities/constants.dart';
 
 class LoggingManager extends ChangeNotifier {
   final NetworkReadingsService readingsService;
@@ -28,9 +29,17 @@ class LoggingManager extends ChangeNotifier {
 
   // keep track of how many samples were successfully sent in the session
   int samplesSentCount = 0;
+  int _samplesFailedCount = 0; // how many failed samples sent in the session
   late DateTime sessionStart;
   late DateTime sessionEnd;
   bool sessionSaved = false;
+
+  // Upload status
+  UploadStatus _uploadStatus = UploadStatus.idle;
+  String? _statusMessage;
+
+  UploadStatus get uploadStatus => _uploadStatus;
+  String? get statusMessage => _statusMessage;
 
   LoggingManager(
       this.readingsService,
@@ -40,14 +49,31 @@ class LoggingManager extends ChangeNotifier {
       {this.batchSize = 2}
   );
 
+  // -------------- Core Functions --------------
   Future<void> startLogging({Duration? interval}) async {
     if (_isLogging) return;
 
-    sessionSaved = false;
+    // reset EVERYTHING
+    timer?.cancel();
+    timer = null;
+
+    _uploadStatus = UploadStatus.idle;
+    _statusMessage = null;
+
+    _samplesFailedCount = 0;
     samplesSentCount = 0;
+
+    _lastSentSignature = null;
+    buffer.clear();
+
+    _stationarySince = null;
+    _movingSince = null;
+
+    sessionSaved = false;
     sessionStart = DateTime.now();
+
     _isLogging = true;
-    _sendInterval = interval ?? Duration(seconds: 2);
+    _sendInterval = interval ?? const Duration(seconds: 2);
 
     _scheduleNextTick();
 
@@ -101,41 +127,112 @@ class LoggingManager extends ChangeNotifier {
     if (buffer.isEmpty) return;
 
     _isSending = true;
-    final batchToSend = buffer.take(batchSize).toList();
 
-    const maxRetries = 5;
-    int attempts = 0;
+    try {
+      List<NetworkReading> pendingBatch = buffer.take(batchSize).toList();
 
-    while (attempts < maxRetries) {
-      try {
-        await ApiService.sendBatch(batchToSend);
-        // Remove readings that hae been successfully sent
-        final removeCount = batchToSend.length <= buffer.length
-            ? batchToSend.length
-            : buffer.length;
+      const maxRetries = 5;
+      int attempts = 0;
 
-        buffer.removeRange(0, removeCount);
-        samplesSentCount += removeCount;
+      final Set<String> permanentlyFailed = {};
 
-        break; // sent successfully
-      } catch (e) {
-        attempts++;
+      while (attempts < maxRetries && pendingBatch.isNotEmpty) {
+        try {
+          final result = await ApiService.sendBatch(pendingBatch);
+          final int successful = result["successful"] ?? 0;
+          final failedDetails = (result["details"] as List<dynamic>? ?? []);
 
-        if (attempts >= maxRetries) {
-          debugPrint('Batch failed after $maxRetries attempts: $e');
-          break;
+          // count successful uploads
+          samplesSentCount += successful;
+
+          // determine failed indexes
+          final failedIndexes = failedDetails
+              .map((e) => e["index"] as int)
+              .toSet();
+
+          // keep only failed readings for retry
+          final stillPending = pendingBatch
+              .asMap()
+              .entries
+              .where((e) => failedIndexes.contains(e.key))
+              .map((e) => e.value)
+              .toList();
+
+          // update retry set
+          pendingBatch = stillPending;
+
+          // remove successful ones from main buffer
+          final failedSignatures = pendingBatch
+              .map((e) => e.signature)
+              .toSet();
+
+          buffer.removeWhere((r) => !failedSignatures.contains(r.signature));
+
+          if (stillPending.isEmpty) {
+            _setStatus(
+              UploadStatus.success,
+              'Samples uploaded successfully',
+            );
+            break; // everything succeeded
+          }
+
+          attempts++;
+          _setStatus(
+            UploadStatus.retrying,
+            'Retrying ${pendingBatch.length} failed samples '
+                '($attempts/$maxRetries)',
+          );
+
+          final delay = Duration(seconds: 1 << attempts);
+          await Future.delayed(delay);
+
+        } catch (e) {
+          attempts++;
+
+          if (attempts >= maxRetries) {
+            _setStatus(
+              UploadStatus.failed,
+              'Failed to upload samples',
+            );
+            debugPrint(
+              'Batch failed after $maxRetries attempts: $e',
+            );
+            break;
+          }
+
+          _setStatus(
+            UploadStatus.retrying,
+            'Connection issue, retrying... '
+                '($attempts/$maxRetries)',
+          );
+
+          // exponential backoff
+          final delay = Duration(seconds: 1 << attempts); // 1 shifted left by attempts bits (1, 2, 4, 8, 16)
+          await Future.delayed(delay);
         }
-        // exponential backoff
-        final delay = Duration(seconds: 1 << attempts); // 1 shifted left by attempts bits (1, 2, 4, 8, 16)
-        await Future.delayed(delay);
       }
-      finally {
-        _isSending = false;
+      if (pendingBatch.isNotEmpty) {
+
+        // these are the REAL failed samples
+        permanentlyFailed.addAll(
+          pendingBatch.map((e) => e.signature),
+        );
+
+        _samplesFailedCount = permanentlyFailed.length;
+
+        _setStatus(
+          UploadStatus.failed,
+          'Failed to send ${permanentlyFailed.length} readings',
+        );
       }
+    } finally {
+      _isSending = false;
     }
+
     notifyListeners();
   }
 
+  // -------------- Adaptive Sampling Functions --------------
   void _scheduleNextTick() {
     if (!_isLogging) return;
 
@@ -252,5 +349,16 @@ class LoggingManager extends ChangeNotifier {
     return batchSize / minutes;
   }
 
+  // -------------- Upload Status --------------
+  void _setStatus(
+      UploadStatus status,
+      String? message,
+      ) {
+    _uploadStatus = status;
+    _statusMessage = message;
+    notifyListeners();
+  }
+
   bool get isLogging => _isLogging; // getter for private bool
+  int get samplesFailedCount => _samplesFailedCount;
 }
