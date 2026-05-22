@@ -6,6 +6,7 @@ class PageWrapper extends StatefulWidget {
   final EdgeInsetsGeometry? padding;
   final bool scrollable;
   final bool keepAlive;
+  final bool expandable;
   final Future<void> Function()? onRefresh;
 
   const PageWrapper({
@@ -15,6 +16,7 @@ class PageWrapper extends StatefulWidget {
     this.padding,
     this.scrollable = true,
     this.keepAlive = true,
+    this.expandable = false,
     this.onRefresh,
   }) : super(key: key);
 
@@ -48,11 +50,13 @@ class _PageWrapperState extends State<PageWrapper>
           ),
         ),
         const SizedBox(height: 16),
-        widget.child,
+        widget.expandable
+            ? Expanded(child: widget.child)
+            : widget.child,
       ],
     );
 
-    if (widget.scrollable) {
+    if (widget.scrollable && !widget.expandable) {
       widget.onRefresh == null
         ? content = SingleChildScrollView(child: content)
         : content = RefreshIndicator(

@@ -6,12 +6,15 @@ class BackPageWrapper extends StatelessWidget {
   final EdgeInsetsGeometry? padding;
   final bool scrollable;
 
+  final Future<void> Function()? onRefresh;
+
   const BackPageWrapper({
     super.key,
     required this.title,
     required this.child,
     this.padding,
     this.scrollable = true,
+    this.onRefresh,
   });
 
   @override
@@ -30,7 +33,9 @@ class BackPageWrapper extends StatelessWidget {
               icon: const Icon(Icons.arrow_back),
               onPressed: () => Navigator.pop(context),
             ),
+
             const SizedBox(width: 4),
+
             Expanded(
               child: Text(
                 title,
@@ -54,13 +59,23 @@ class BackPageWrapper extends StatelessWidget {
         const SizedBox(height: 16),
 
         scrollable
-        ? child
-        : Expanded(child: child),
+            ? child
+            : Expanded(child: child),
       ],
     );
 
     if (scrollable) {
-      content = SingleChildScrollView(child: content);
+      content = onRefresh == null
+          ? SingleChildScrollView(
+              child: content,
+            )
+          : RefreshIndicator(
+            onRefresh: onRefresh!,
+            child: SingleChildScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              child: content,
+            ),
+      );
     }
 
     return GestureDetector(

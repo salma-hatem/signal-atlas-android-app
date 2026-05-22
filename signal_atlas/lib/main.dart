@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 import 'package:provider/provider.dart';
+import 'package:signal_atlas/providers/coverage_requests_provider.dart';
 import 'package:signal_atlas/services/device_service.dart';
 import 'package:signal_atlas/services/dashboard_service.dart';
 import 'package:signal_atlas/services/location_tracking_service.dart';
@@ -60,6 +61,7 @@ void main() async {
         )),
         ChangeNotifierProvider(create: (_) => CurrentNetworkReadingProvider(readingsService)),
         ChangeNotifierProvider(create: (_) => DashboardProvider(service: dashboardService)),
+        ChangeNotifierProvider(create: (_) => CoverageRequestsProvider()..loadRequests()),
       ],
       child: const App(),
     ),

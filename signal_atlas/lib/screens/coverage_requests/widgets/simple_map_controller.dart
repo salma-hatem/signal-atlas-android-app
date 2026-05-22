@@ -1,25 +1,20 @@
 import 'package:flutter/material.dart';
-import '../../../widgets/map_button.dart';
-import 'heatmap_legend.dart';
+import '/widgets/map_button.dart';
 
-class MapOverlayControls extends StatelessWidget {
-  final bool isFullScreen;
-  final VoidCallback? onFullscreen;
+class SimpleMapController extends StatelessWidget {
   final VoidCallback? onBack;
+  final VoidCallback? onFullscreen;
   final VoidCallback onReset;
-  final VoidCallback onToggleMarkers;
-  final bool markersAlwaysVisible;
   final ColorScheme colorScheme;
+  final bool isFullScreen;
 
-  const MapOverlayControls({
+  const SimpleMapController({
     super.key,
-    this.isFullScreen = false,
-    this.onFullscreen,
     this.onBack,
+    this.onFullscreen,
     required this.onReset,
-    required this.onToggleMarkers,
-    required this.markersAlwaysVisible,
     required this.colorScheme,
+    this.isFullScreen = false,
   });
 
   double get topOffset => isFullScreen ? 40 : 8;
@@ -46,7 +41,7 @@ class MapOverlayControls extends StatelessWidget {
     }
 
     // ------------------------------------------------
-    // Full Screen
+    // Fullscreen
     // ------------------------------------------------
     if (onFullscreen != null) {
       addRightButton(
@@ -62,31 +57,15 @@ class MapOverlayControls extends StatelessWidget {
     }
 
     // ------------------------------------------------
-    // Reset Location
+    // Reset
     // ------------------------------------------------
     addRightButton(
       buildMapButton(
         icon: Icons.gps_fixed,
         size: size,
         iconPadding: iconPadding,
-        tooltip: "Reset Location",
+        tooltip: "Reset",
         onPressed: onReset,
-        colorScheme: colorScheme,
-      ),
-    );
-
-    // ------------------------------------------------
-    // Toggle Markers
-    // ------------------------------------------------
-    addRightButton(
-      buildMapButton(
-        icon: markersAlwaysVisible
-            ? Icons.pin_drop_rounded
-            : Icons.pin_drop_outlined,
-        size: size,
-        iconPadding: iconPadding,
-        tooltip: "Toggle Markers",
-        onPressed: onToggleMarkers,
         colorScheme: colorScheme,
       ),
     );
@@ -109,38 +88,11 @@ class MapOverlayControls extends StatelessWidget {
               colorScheme: colorScheme,
             ),
           ),
+
         // ------------------------------------------------
-        // Buttons on the Right
+        // Right Buttons
         // ------------------------------------------------
         ...buttons,
-        // ------------------------------------------------
-        // Heatmap Legend
-        // ------------------------------------------------
-        if (isFullScreen)
-          Positioned(
-            bottom: 16,
-            left: horizontalPadding,
-            right: horizontalPadding,
-            child: Container(
-                decoration: BoxDecoration(
-                  color: colorScheme.surface,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: colorScheme.secondary.withAlpha(150))
-                ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(12),
-                  child: Padding(
-                    padding: const EdgeInsets.only(
-                      top: 8,
-                      left: 8,
-                      right: 8,
-                      bottom: 0,
-                    ),
-                    child: const HeatmapLegend(),
-                  ),
-                ),
-              ),
-          )
       ],
     );
   }

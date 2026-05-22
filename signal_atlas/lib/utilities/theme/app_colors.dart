@@ -77,14 +77,17 @@ class AppColors {
     4: Color(0xFF8FB4FF),
   };
 
+  static const Color green = Color(0xFF6CC070);
+  static const Color orange = Color(0xFFFFA85C);
+
   static const Map<int, Color> chartColorsLight = {
     0 : primary,
-    1: Color(0xFF6CC070),
+    1: green,
   };
 
   static const Map<int, Color> chartColorsDark = {
     0: darkPrimary,
-    1: Color(0xFF6CC070),
+    1: green,
   };
 
   static Color chartColor(int index, ColorScheme scheme) {
