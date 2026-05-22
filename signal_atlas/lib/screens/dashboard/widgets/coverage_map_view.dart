@@ -4,7 +4,7 @@ import 'package:flutter_map_heatmap/flutter_map_heatmap.dart';
 import 'package:latlong2/latlong.dart';
 
 import 'heatmap_overlay.dart';
-import 'map_filters.dart';
+import '../../../utilities/map_filters.dart';
 
 class CoverageMapView extends StatelessWidget {
   final MapController mapController;
