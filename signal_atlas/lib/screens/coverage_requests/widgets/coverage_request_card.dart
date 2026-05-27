@@ -6,10 +6,12 @@ import '../../../utilities/theme/app_colors.dart';
 
 class CoverageRequestCard extends StatelessWidget {
   final CoverageRequest request;
+  final bool isActive;
 
   const CoverageRequestCard({
     super.key,
     required this.request,
+    this.isActive = false,
   });
 
   Color _statusColor(
@@ -17,13 +19,13 @@ class CoverageRequestCard extends StatelessWidget {
       ColorScheme colorScheme,
       ) {
     switch (status) {
-      case "Open":
+      case "OPEN":
         return AppColors.green;
 
-      case "Cancelled":
+      case "CANCELLED":
         return colorScheme.error;
 
-      case "Completed":
+      case "COMPLETED":
         return AppColors.orange;
 
       default:
@@ -33,13 +35,13 @@ class CoverageRequestCard extends StatelessWidget {
 
   IconData _statusIcon(String status) {
     switch (status) {
-      case "Open":
+      case "OPEN":
         return Icons.access_time_rounded;
 
-      case "Cancelled":
+      case "CANCELLED":
         return Icons.cancel_outlined;
 
-      case "Completed":
+      case "COMPLETED":
         return Icons.check_circle_outline;
 
       default:
@@ -62,7 +64,37 @@ class CoverageRequestCard extends StatelessWidget {
       colorScheme,
     );
 
-    return Card(
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 200),
+      curve: Curves.easeOut,
+
+      decoration: BoxDecoration(
+        color: theme.cardColor,
+        borderRadius: BorderRadius.circular(12),
+
+        border: isActive
+            ? Border.all(
+          color: colorScheme.primary,
+          width: 1.5,
+        )
+            : null,
+
+        boxShadow: [
+          if (isActive)
+            BoxShadow(
+              color: colorScheme.primary.withOpacity(0.12),
+              blurRadius: 16,
+              offset: const Offset(0, 6),
+            )
+          else
+            BoxShadow(
+              color: Colors.black.withOpacity(0.04),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+        ],
+      ),
+
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -95,9 +127,7 @@ class CoverageRequestCard extends StatelessWidget {
                             size: 16,
                             color: colorScheme.outline,
                           ),
-
                           const SizedBox(width: 4),
-
                           Expanded(
                             child: Text(
                               request.location,
@@ -108,10 +138,34 @@ class CoverageRequestCard extends StatelessWidget {
                           ),
                         ],
                       ),
+
+                      // ACTIVE CHIP
+                      if (isActive) ...[
+                        const SizedBox(height: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 3,
+                          ),
+                          decoration: BoxDecoration(
+                            color: colorScheme.primary.withOpacity(0.12),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Text(
+                            "ACTIVE",
+                            style: textTheme.labelSmall?.copyWith(
+                              color: colorScheme.primary,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 ),
 
+                // REWARD BOX
                 Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 14,
@@ -132,9 +186,7 @@ class CoverageRequestCard extends StatelessWidget {
                             size: 16,
                             color: AppColors.green,
                           ),
-
                           const SizedBox(width: 6),
-
                           Text(
                             "Reward",
                             style: textTheme.labelSmall?.copyWith(
@@ -145,9 +197,7 @@ class CoverageRequestCard extends StatelessWidget {
                           ),
                         ],
                       ),
-
                       const SizedBox(height: 4),
-
                       Row(
                         mainAxisSize: MainAxisSize.min,
                         crossAxisAlignment: CrossAxisAlignment.end,
@@ -160,9 +210,7 @@ class CoverageRequestCard extends StatelessWidget {
                               height: 1,
                             ),
                           ),
-
                           const SizedBox(width: 4),
-
                           Padding(
                             padding: const EdgeInsets.only(bottom: 2),
                             child: Text(
@@ -177,7 +225,7 @@ class CoverageRequestCard extends StatelessWidget {
                       ),
                     ],
                   ),
-                )
+                ),
               ],
             ),
 

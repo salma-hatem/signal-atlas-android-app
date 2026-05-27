@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import '../../../providers/logging_provider.dart';
-import '../../../providers/sessions_provider.dart';
-import 'upload_status_indicator.dart';
-import 'session_stat.dart';
-import 'session_duration_text.dart';
+import '../providers/logging_provider.dart';
+import '../providers/sessions_provider.dart';
+import '../screens/data_hub/widgets/upload_status_indicator.dart';
+import '../screens/data_hub/widgets/session_stat.dart';
+import '../screens/data_hub/widgets/session_duration_text.dart';
 
 class CurrentSessionCard extends StatelessWidget {
   final bool isVisible;

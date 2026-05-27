@@ -9,8 +9,14 @@ class LoggingCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final loggingProvider = context.watch<LoggingProvider>();
-    final isLoggingEnabled = loggingProvider.isLogging;
+
+    final isGeneralLoggingEnabled =
+        loggingProvider.isLogging &&
+            loggingProvider.activeRequestId == null;
+
     final canLog = loggingProvider.canLog;
+
+    final anotherRequestActive = loggingProvider.isLogging && loggingProvider.activeRequestId != null;
 
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
@@ -25,14 +31,24 @@ class LoggingCard extends StatelessWidget {
 
       showCustomSnackBar(
         context,
-        isLoggingEnabled ? "Disabled logging" : "Enabled logging",
+        isGeneralLoggingEnabled ? "Disabled logging" : "Enabled logging",
       );
     }
 
     return Card(
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
-        onTap: toggleLogging,
+          onTap: () {
+            if (anotherRequestActive) {
+              showCustomSnackBar(
+                context,
+                "A request logging session is already active",
+              );
+              return;
+            }
+
+            loggingProvider.toggleLogging();
+          },
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Column(
@@ -46,7 +62,7 @@ class LoggingCard extends StatelessWidget {
                 children: [
                   Icon(
                     Icons.data_usage,
-                    color: isLoggingEnabled
+                    color: isGeneralLoggingEnabled
                         ? colorScheme.primary
                         : colorScheme.secondary,
                   ),
@@ -63,9 +79,9 @@ class LoggingCard extends StatelessWidget {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          isLoggingEnabled ? "Enabled" : "Disabled",
+                          isGeneralLoggingEnabled ? "Enabled" : "Disabled",
                           style: TextStyle(
-                            color: isLoggingEnabled
+                            color: isGeneralLoggingEnabled
                                 ? colorScheme.primary
                                 : colorScheme.secondary,
                           ),
@@ -74,7 +90,7 @@ class LoggingCard extends StatelessWidget {
                     ),
                   ),
                   Switch(
-                    value: isLoggingEnabled,
+                    value: isGeneralLoggingEnabled,
                     onChanged: canLog ? (_) => toggleLogging() : null,
                   ),
                 ],

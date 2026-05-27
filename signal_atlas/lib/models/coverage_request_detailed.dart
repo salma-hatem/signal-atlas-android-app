@@ -61,12 +61,14 @@ class CoverageRequestDetail {
           ? DateTime.parse(json['completed_at'])
           : null,
 
-      area: (json['area'] as List<dynamic>? ?? [])
-          .map((p) => LatLng(
-        (p['lat'] ?? p['latitude']).toDouble(),
-        (p['lng'] ?? p['longitude']).toDouble(),
-      ))
-          .toList(),
+      area: ((json['area']?['coordinates']?[0] ?? [])
+      as List<dynamic>)
+          .map(
+            (point) => LatLng(
+          point[1].toDouble(),
+          point[0].toDouble(),
+        ),
+      ).toList(),
 
     );
   }

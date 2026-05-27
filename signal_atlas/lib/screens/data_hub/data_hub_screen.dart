@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/logging_provider.dart';
 import '../../utilities/constants.dart';
+import '../../utilities/speed_format.dart';
 import '../../widgets/page_wrapper.dart';
 
 import 'package:signal_atlas/providers/sessions_provider.dart';
@@ -10,7 +11,7 @@ import 'package:signal_atlas/services/device_service.dart';
 import 'widgets/sessions_table.dart';
 import 'widgets/enable_logging_card.dart';
 import 'widgets/server_health_card.dart';
-import 'widgets/current_session_card.dart';
+import '../../widgets/current_session_card.dart';
 import 'package:signal_atlas/widgets/custom_snackbar.dart';
 import 'package:signal_atlas/widgets/shimmer_box.dart';
 
@@ -67,8 +68,7 @@ class _DataHubPageState extends State<DataHubPage> {
 
     final sessionsProvider = context.watch<SessionProvider>();
     final loggingProvider = context.watch<LoggingProvider>();
-    final isLoggingEnabled = loggingProvider.isLogging;
-    print("STATUS UPLOAD ${_lastStatus}");
+    final isLoggingEnabled = loggingProvider.isLogging && loggingProvider.activeRequestId == null;
 
     return PageWrapper(
       title: "Data Hub",
@@ -112,7 +112,7 @@ class _DataHubPageState extends State<DataHubPage> {
               textTheme: textTheme,
               sessionsProvider: sessionsProvider,
               loggingProvider: loggingProvider,
-              formatSpeed: _formatSpeed,
+              formatSpeed: formatSpeed,
             ),
 
             // ------------------------------------------------
@@ -269,12 +269,5 @@ class _DataHubPageState extends State<DataHubPage> {
         ],
       ),
     );
-  }
-
-  String _formatSpeed(double? speed) {
-    if (speed == null) return "--";
-
-    if (speed < 1) return "0";
-    return speed.toStringAsFixed(1);
   }
 }
