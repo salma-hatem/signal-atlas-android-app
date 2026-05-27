@@ -35,11 +35,15 @@ class LoggingProvider extends ChangeNotifier {
 
     // listen to stop logging if server offline
     _serverListener = () {
-      if (serverHealthProvider.state != ServerState.success &&
-          _manager.isLogging) {
+      final isOffline =
+          serverHealthProvider.state != ServerState.success;
+
+      // stop logging only when needed
+      if (isOffline && _manager.isLogging) {
         _manager.stopLogging();
-        notifyListeners();
       }
+
+      notifyListeners();
     };
 
     serverHealthProvider.addListener(_serverListener);
@@ -55,20 +59,22 @@ class LoggingProvider extends ChangeNotifier {
   bool get isLogging => _manager.isLogging;
   double get currentSendingRatePerMinute => _manager.currentSendingRatePerMinute;
   double get currentSpeedMps => _manager.currentSpeedMps;
+  int? get activeRequestId => _manager.activeRequestId;
 
   bool get canLog => serverHealthProvider.state == ServerState.success;
+  bool get isStopping => _manager.isStopping;
 
   UploadStatus get uploadStatus => _manager.uploadStatus;
   String? get statusMessage => _manager.statusMessage;
   int get samplesFailedCount => _manager.samplesFailedCount;
 
-  Future<void> toggleLogging() async {
+  Future<void> toggleLogging({int? requestId}) async {
     if (!canLog) return; // block logging if server offline
 
     if (_manager.isLogging) {
       await _manager.stopLogging();
     } else {
-      _manager.startLogging();
+      await _manager.startLogging(requestId: requestId);
     }
     notifyListeners();
   }

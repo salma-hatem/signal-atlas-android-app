@@ -13,6 +13,7 @@ class NetworkReading {
   // Metadata
   final String deviceId;
   final DateTime timestamp;
+  final int? requestId;
 
   // Location
   final double latitude;
@@ -42,6 +43,7 @@ class NetworkReading {
 
   NetworkReading({
     required this.deviceId,
+    this.requestId,
     required this.latitude,
     required this.longitude,
     required this.altitude,
@@ -170,8 +172,39 @@ class NetworkReading {
       'cellId': cellId.toString(),
       'physicalCellId': physicalCellId,
       'trackingAreaCode': trackingAreaCode,
-      'speedMps': speedMps,
+      'request_id': requestId,
+      'processing_status': 'PENDING',
     };
+  }
+
+  NetworkReading copyWith({
+    int? requestId,
+  }) {
+    return NetworkReading(
+      deviceId: deviceId,
+      timestamp: timestamp,
+      latitude: latitude,
+      longitude: longitude,
+      altitude: altitude,
+      country: country,
+      city: city,
+      gpsAccuracy: gpsAccuracy,
+      level: level,
+      asu: asu,
+      rsrp: rsrp,
+      rssi: rssi,
+      rsrq: rsrq,
+      networkType: networkType,
+      operatorName: operatorName,
+      cellId: cellId,
+      physicalCellId: physicalCellId,
+      trackingAreaCode: trackingAreaCode,
+      indoorOutdoor: indoorOutdoor,
+      mcc: mcc,
+      mnc: mnc,
+      speedMps: speedMps,
+      requestId: requestId ?? this.requestId,
+    );
   }
 }
 

@@ -62,6 +62,7 @@ void main() async {
         ChangeNotifierProvider(create: (_) => CurrentNetworkReadingProvider(readingsService)),
         ChangeNotifierProvider(create: (_) => DashboardProvider(service: dashboardService)),
         ChangeNotifierProvider(create: (_) => CoverageRequestsProvider()..loadRequests()),
+        Provider<NetworkReadingsService>.value(value: readingsService),
       ],
       child: const App(),
     ),

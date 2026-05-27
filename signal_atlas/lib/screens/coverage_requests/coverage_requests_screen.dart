@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../providers/coverage_requests_provider.dart';
+import '../../services/network_readings_service.dart';
 import '../../widgets/page_wrapper.dart';
 import 'coverage_request_details_page.dart';
 import 'widgets/coverage_request_card.dart';
@@ -58,9 +59,10 @@ class _CoverageRequestsPageState extends State<CoverageRequestsPage> {
 
     final provider = context.watch<CoverageRequestsProvider>();
 
-    final filteredRequests = provider.getFilteredRequests(
+    final filteredRequests = provider.getSortedRequests(
       _searchController.text,
       selectedFilters,
+      provider.activeRequestId,
     );
 
     return PageWrapper(
@@ -148,14 +150,41 @@ class _CoverageRequestsPageState extends State<CoverageRequestsPage> {
                 return FilterChip(
                   label: Text(filter),
                   selected: isSelected,
-                  onSelected: (selected) {
-                    setState(() {
+                  onSelected: (selected) async {
+
+                    if (selected) {
+                      selectedFilters.add(filter);
+                    } else {
+                      selectedFilters.remove(filter);
+                    }
+
+                    // handle nearby loading
+                    if (filter == "Nearby") {
+
                       if (selected) {
-                        selectedFilters.add(filter);
+
+                        final readingService = context.read<NetworkReadingsService>();
+
+                        final latestReading = readingService.latestReading;
+                        if (latestReading == null) {
+                          return;
+                        }
+
+                        final latitude = latestReading.latitude;
+                        final longitude = latestReading.longitude;
+
+                        await provider.loadNearbyRequests(
+                          latitude: latitude,
+                          longitude: longitude,
+                        );
+
                       } else {
-                        selectedFilters.remove(filter);
+
+                        provider.clearNearbyRequests();
                       }
-                    });
+                    }
+
+                    setState(() {});
                   },
                   selectedColor: colorScheme.primary.withAlpha(30),
                   backgroundColor: colorScheme.surface,
@@ -256,6 +285,8 @@ class _CoverageRequestsPageState extends State<CoverageRequestsPage> {
 
                         child: CoverageRequestCard(
                           request: filteredRequests[index],
+                          isActive: filteredRequests[index].id ==
+                              provider.activeRequestId,
                         ),
                       );
                     },

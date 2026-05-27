@@ -21,8 +21,12 @@ class LoggingManager extends ChangeNotifier {
   Duration _sendInterval = Duration(seconds: 2);
   List<NetworkReading> buffer = [];
   final int batchSize;
+  int? activeRequestId;
+
   bool _isLogging = false;
   bool _isSending = false;
+  bool _isStopping = false;
+  bool get isStopping => _isStopping;
   DateTime? _stationarySince;
   DateTime? _movingSince;
   String? _lastSentSignature; // avoid sending same reading more than once
@@ -50,7 +54,7 @@ class LoggingManager extends ChangeNotifier {
   );
 
   // -------------- Core Functions --------------
-  Future<void> startLogging({Duration? interval}) async {
+  Future<void> startLogging({Duration? interval, int? requestId}) async {
     if (_isLogging) return;
 
     // reset EVERYTHING
@@ -71,6 +75,8 @@ class LoggingManager extends ChangeNotifier {
 
     sessionSaved = false;
     sessionStart = DateTime.now();
+
+    activeRequestId = requestId;
 
     _isLogging = true;
     _sendInterval = interval ?? const Duration(seconds: 2);
@@ -95,32 +101,50 @@ class LoggingManager extends ChangeNotifier {
   }
 
   Future<void> stopLogging() async {
-    debugPrint("stopped logging ${buffer.length}");
     if (!_isLogging) return;
+    if (_isStopping) return;
 
-    timer?.cancel();
-    _isLogging = false;
-    // Keep sending until buffer is empty
-    while (buffer.isNotEmpty) {
+    _isStopping = true;
+    notifyListeners();
+
+    try {
+      timer?.cancel();
+      _isLogging = false;
+      // Keep sending until buffer is empty
+      while (buffer.isNotEmpty && _isLogging == false) {
+        final before = buffer.length;
+
         await sendBatch();
+
+        // prevent infinite loop if nothing changed
+        if (buffer.length == before) {
+          debugPrint("Buffer stuck, aborting flush");
+          break;
+        }
+      }
+
+      // Save session once
+      if (!sessionSaved && samplesSentCount != 0) {
+        sessionEnd = DateTime.now();
+        final sessionDuration = sessionEnd.difference(sessionStart);
+        Session session = Session(
+          date: DateTime.now(),
+          duration: sessionDuration,
+          sampleCount: samplesSentCount,
+        );
+
+        await sessionProvider.addSession(session);
+        sessionSaved = true;
+        debugPrint("Session saved: $session");
+      }
+
+      await notificationsPlugin.cancel(id: 2);
+
+      activeRequestId = null;
+    } finally {
+      _isStopping = false;
+      notifyListeners();
     }
-
-    // Save session once
-    if (!sessionSaved && samplesSentCount != 0) {
-      sessionEnd = DateTime.now();
-      final sessionDuration = sessionEnd.difference(sessionStart);
-      Session session = Session(
-        date: DateTime.now(),
-        duration: sessionDuration,
-        sampleCount: samplesSentCount,
-      );
-
-      await sessionProvider.addSession(session);
-      sessionSaved = true;
-      debugPrint("Session saved: $session");
-    }
-
-    await notificationsPlugin.cancel(id: 2);
   }
 
   Future<void> sendBatch() async {
@@ -213,12 +237,18 @@ class LoggingManager extends ChangeNotifier {
       }
       if (pendingBatch.isNotEmpty) {
 
-        // these are the REAL failed samples
         permanentlyFailed.addAll(
           pendingBatch.map((e) => e.signature),
         );
 
-        _samplesFailedCount = permanentlyFailed.length;
+        // REMOVE permanently failed readings
+        final failedSignatures = permanentlyFailed.toSet();
+
+        buffer.removeWhere(
+              (r) => failedSignatures.contains(r.signature),
+        );
+
+        _samplesFailedCount += permanentlyFailed.length;
 
         _setStatus(
           UploadStatus.failed,
@@ -252,7 +282,12 @@ class LoggingManager extends ChangeNotifier {
         return;
       }
 
-      buffer.add(latest);
+      buffer.add(
+        latest.copyWith(
+          requestId: activeRequestId,
+        ),
+      );
+
       _lastSentSignature = sig;
 
       if (buffer.length >= batchSize && !_isSending) {
