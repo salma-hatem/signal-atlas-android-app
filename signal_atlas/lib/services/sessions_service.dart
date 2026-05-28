@@ -10,11 +10,16 @@ class SessionsService {
 
     await db.insert(
       'sessions',
-      {
-        'date': session.date.toIso8601String(),
-        'duration': session.duration.inMinutes,
-        'sampleCount': session.sampleCount,
-      },
+        {
+          'date': session.date.toIso8601String(),
+          'duration': session.duration.inMinutes,
+          'sampleCount': session.sampleCount,
+
+          'isCoverageRequest': session.isCoverageRequest ? 1 : 0,
+
+          'requestId': session.requestId,
+          'requestTitle': session.requestTitle,
+        }
     );
   }
 
@@ -44,8 +49,15 @@ class SessionsService {
     return maps.map((e) {
       return Session(
         date: DateTime.parse(e['date'] as String),
-        duration: Duration(minutes: e['duration'] as int),
+
+        duration: Duration(
+          minutes: e['duration'] as int,
+        ),
+
         sampleCount: e['sampleCount'] as int,
+        isCoverageRequest: (e['isCoverageRequest'] as int) == 1,
+        requestId: e['requestId'] as int?,
+        requestTitle: e['requestTitle'] as String?,
       );
     }).toList();
   }
@@ -58,8 +70,15 @@ class SessionsService {
     return maps.map((e) {
       return Session(
         date: DateTime.parse(e['date'] as String),
-        duration: Duration(minutes: e['duration'] as int),
+
+        duration: Duration(
+          minutes: e['duration'] as int,
+        ),
+
         sampleCount: e['sampleCount'] as int,
+        isCoverageRequest: (e['isCoverageRequest'] as int) == 1,
+        requestId: e['requestId'] as int?,
+        requestTitle: e['requestTitle'] as String?,
       );
     }).toList();
   }

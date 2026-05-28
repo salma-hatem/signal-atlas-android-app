@@ -22,6 +22,7 @@ class LoggingManager extends ChangeNotifier {
   List<NetworkReading> buffer = [];
   final int batchSize;
   int? activeRequestId;
+  String? activeRequestTitle;
 
   bool _isLogging = false;
   bool _isSending = false;
@@ -54,7 +55,7 @@ class LoggingManager extends ChangeNotifier {
   );
 
   // -------------- Core Functions --------------
-  Future<void> startLogging({Duration? interval, int? requestId}) async {
+  Future<void> startLogging({Duration? interval, int? requestId, String? requestTitle}) async {
     if (_isLogging) return;
 
     // reset EVERYTHING
@@ -77,6 +78,7 @@ class LoggingManager extends ChangeNotifier {
     sessionStart = DateTime.now();
 
     activeRequestId = requestId;
+    activeRequestTitle = requestTitle;
 
     _isLogging = true;
     _sendInterval = interval ?? const Duration(seconds: 2);
@@ -131,6 +133,9 @@ class LoggingManager extends ChangeNotifier {
           date: DateTime.now(),
           duration: sessionDuration,
           sampleCount: samplesSentCount,
+          isCoverageRequest: activeRequestId != null,
+          requestId: activeRequestId,
+          requestTitle: activeRequestTitle,
         );
 
         await sessionProvider.addSession(session);

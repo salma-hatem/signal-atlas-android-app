@@ -61,6 +61,7 @@ class CoverageRequestsProvider extends ChangeNotifier {
 
   Future<void> toggleRequestLogging({
     required int requestId,
+    required String requestTitle,
     required LoggingProvider loggingProvider,
   }) async {
     final isThisActive = _activeRequestId == requestId;
@@ -69,7 +70,10 @@ class CoverageRequestsProvider extends ChangeNotifier {
 
     // already logging THIS request -> stop
     if (isThisActive && isGlobalLogging) {
-      await loggingProvider.toggleLogging(requestId: requestId);
+      await loggingProvider.toggleLogging(
+        requestId: requestId,
+        requestTitle: requestTitle,
+      );
       _activeRequestId = null;
       notifyListeners();
       return;
@@ -81,7 +85,10 @@ class CoverageRequestsProvider extends ChangeNotifier {
     }
 
     // start logging for this request
-    await loggingProvider.toggleLogging(requestId: requestId);
+    await loggingProvider.toggleLogging(
+      requestId: requestId,
+      requestTitle: requestTitle,
+    );
     _activeRequestId = requestId;
 
     notifyListeners();

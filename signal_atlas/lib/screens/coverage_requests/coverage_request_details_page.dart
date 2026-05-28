@@ -329,7 +329,7 @@ class _CoverageRequestDetailsPageState extends State<CoverageRequestDetailsPage>
 
     final canEnableLogging =
         isRequestOpen &&
-            // isInsideArea &&
+            isInsideArea &&
             (!loggingProvider.isLogging || isThisRequestActive);
 
     return Column(
@@ -510,17 +510,18 @@ class _CoverageRequestDetailsPageState extends State<CoverageRequestDetailsPage>
                       return;
                     }
 
-                    // if (!isInsideArea && !isThisRequestActive) {
-                    //   showCustomSnackBar(
-                    //     context,
-                    //     "You must be inside the coverage area",
-                    //   );
-                    //   return;
-                    // }
+                    if (!isInsideArea && !isThisRequestActive) {
+                      showCustomSnackBar(
+                        context,
+                        "You must be inside the coverage area",
+                      );
+                      return;
+                    }
 
                     try {
                       await requestsProvider.toggleRequestLogging(
                         requestId: request.id,
+                        requestTitle: request.title,
                         loggingProvider: loggingProvider,
                       );
                     } finally {
