@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:signal_atlas/models/sessions.dart';
 import 'package:signal_atlas/widgets/table.dart';
+import '../../../utilities/theme/app_colors.dart';
+import '../../../widgets/custom_overlay_tooltip.dart';
 import '../all_sessions_screen.dart';
 
 class LastSessionsCard extends StatelessWidget {
@@ -44,6 +46,28 @@ class LastSessionsCard extends StatelessWidget {
               maxRows: 5,
               columns: [
                 SessionColumn(
+                  title: "",
+                  flex: 0,
+                  iconSize: 16,
+                  padding: const EdgeInsets.all(2),
+                  widgetBuilder: (s) {
+                    if (!s.isCoverageRequest) {
+                      return const SizedBox(
+                        width: 16,
+                        height: 16,
+                      );
+                    }
+
+                    return Center(
+                      child: Icon(
+                          Icons.assignment_rounded,
+                          size: 16,
+                          color: AppColors.green,
+                      ),
+                    );
+                  },
+                ),
+                SessionColumn(
                   title: "Date",
                   valueBuilder: (s) => s.dateString,
                 ),
@@ -54,7 +78,6 @@ class LastSessionsCard extends StatelessWidget {
                 SessionColumn(
                   title: "Samples",
                   valueBuilder: (s) => s.sampleCount.toString(),
-                  align: TextAlign.right,
                 ),
               ],
             ),

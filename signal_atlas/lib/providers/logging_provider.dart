@@ -68,13 +68,16 @@ class LoggingProvider extends ChangeNotifier {
   String? get statusMessage => _manager.statusMessage;
   int get samplesFailedCount => _manager.samplesFailedCount;
 
-  Future<void> toggleLogging({int? requestId}) async {
+  Future<void> toggleLogging({
+    int? requestId,
+    String? requestTitle,
+  }) async {
     if (!canLog) return; // block logging if server offline
 
     if (_manager.isLogging) {
       await _manager.stopLogging();
     } else {
-      await _manager.startLogging(requestId: requestId);
+      await _manager.startLogging(requestId: requestId, requestTitle: requestTitle);
     }
     notifyListeners();
   }

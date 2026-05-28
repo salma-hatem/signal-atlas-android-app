@@ -3,13 +3,25 @@ import 'package:signal_atlas/models/sessions.dart';
 
 class SessionColumn {
   final String title;
-  final String Function(Session session) valueBuilder;
+  final String Function(Session session)? valueBuilder;
+  final Widget Function(Session session)? widgetBuilder;
   final TextAlign align;
+
+  final EdgeInsetsGeometry padding;
+  final int flex;
+  final double iconSize;
 
   const SessionColumn({
     required this.title,
-    required this.valueBuilder,
-    this.align = TextAlign.left,
+    this.valueBuilder,
+    this.widgetBuilder,
+    this.align = TextAlign.center,
+    this.padding = const EdgeInsets.symmetric(
+      vertical: 10,
+      horizontal: 2,
+    ),
+    this.flex = 1,
+    this.iconSize = 28,
   });
 }
 
@@ -51,14 +63,19 @@ class SessionsTable extends StatelessWidget {
 
           return Container(
             color: bgColor,
-            padding: const EdgeInsets.symmetric(
-                vertical: 10, horizontal: 12),
+            padding: EdgeInsets.zero,
             child: Row(
               children: columns.map((col) {
                 return Expanded(
-                  child: Text(
-                    col.valueBuilder(s),
-                    textAlign: col.align,
+                  flex: col.flex,
+                  child: Padding(
+                    padding: col.padding,
+                    child: col.widgetBuilder != null
+                        ? col.widgetBuilder!(s)
+                        : Text(
+                      col.valueBuilder!(s),
+                      textAlign: col.align,
+                    ),
                   ),
                 );
               }).toList(),
@@ -72,7 +89,7 @@ class SessionsTable extends StatelessWidget {
       children: [
         // Header
         Container(
-          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+          padding: EdgeInsets.zero,
           decoration: BoxDecoration(
             color: colorScheme.primary.withAlpha(40),
             borderRadius: BorderRadius.circular(12),
@@ -80,10 +97,21 @@ class SessionsTable extends StatelessWidget {
           child: Row(
             children: columns.map((col) {
               return Expanded(
-                child: Text(
-                  col.title,
-                  textAlign: col.align,
-                  style: const TextStyle(fontWeight: FontWeight.bold),
+                flex: col.flex,
+                child: Padding(
+                  padding: col.padding,
+                  child: col.title.isEmpty
+                      ? SizedBox(
+                    width: col.iconSize,
+                    height: col.iconSize,
+                  )
+                      : Text(
+                    col.title,
+                    textAlign: col.align,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                 ),
               );
             }).toList(),

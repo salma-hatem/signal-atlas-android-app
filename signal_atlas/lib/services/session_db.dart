@@ -30,9 +30,15 @@ class SessionDB {
     await db.execute('''
       CREATE TABLE sessions (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
+    
         date TEXT NOT NULL,
         duration INTEGER NOT NULL,
-        sampleCount INTEGER NOT NULL
+        sampleCount INTEGER NOT NULL,
+    
+        isCoverageRequest INTEGER NOT NULL DEFAULT 0,
+    
+        requestId INTEGER,
+        requestTitle TEXT
       )
     ''');
   }
