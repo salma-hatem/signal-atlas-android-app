@@ -52,7 +52,7 @@ class LoggingManager extends ChangeNotifier {
       this.sessionProvider,
       this.notificationsPlugin,
       {this.batchSize = 2}
-  );
+      );
 
   // -------------- Core Functions --------------
   Future<void> startLogging({Duration? interval, int? requestId, String? requestTitle}) async {
@@ -159,112 +159,80 @@ class LoggingManager extends ChangeNotifier {
 
     try {
       List<NetworkReading> pendingBatch = buffer.take(batchSize).toList();
+      buffer.removeRange(0, pendingBatch.length);
 
       const maxRetries = 5;
       int attempts = 0;
 
-      final Set<String> permanentlyFailed = {};
-
       while (attempts < maxRetries && pendingBatch.isNotEmpty) {
         try {
           final result = await ApiService.sendBatch(pendingBatch);
-          final int successful = result["successful"] ?? 0;
-          final failedDetails = (result["details"] as List<dynamic>? ?? []);
 
-          // count successful uploads
-          samplesSentCount += successful;
+          debugPrint("SEND BATCH RESPONSE: $result");
 
-          // determine failed indexes
+          final failedDetails = (result["details"] as List<dynamic>? ?? [])
+              .where((e) => e["status"] != "success") // ← add this
+              .toList();
           final failedIndexes = failedDetails
               .map((e) => e["index"] as int)
               .toSet();
 
-          // keep only failed readings for retry
-          final stillPending = pendingBatch
+          // only count items not in the failed set
+          final actualSuccessful = pendingBatch.length - failedIndexes.length;
+          samplesSentCount += actualSuccessful.clamp(0, pendingBatch.length);
+
+          // keep only failed items for retry
+          pendingBatch = pendingBatch
               .asMap()
               .entries
               .where((e) => failedIndexes.contains(e.key))
               .map((e) => e.value)
               .toList();
 
-          // update retry set
-          pendingBatch = stillPending;
-
-          // remove successful ones from main buffer
-          final failedSignatures = pendingBatch
-              .map((e) => e.signature)
-              .toSet();
-
-          buffer.removeWhere((r) => !failedSignatures.contains(r.signature));
-
-          if (stillPending.isEmpty) {
-            _setStatus(
-              UploadStatus.success,
-              'Samples uploaded successfully',
-            );
-            break; // everything succeeded
+          if (pendingBatch.isEmpty) {
+            _setStatus(UploadStatus.success, 'Samples uploaded successfully');
+            break;
           }
 
           attempts++;
+
+          // status updated before delay so UI reflects retrying immediately
           _setStatus(
             UploadStatus.retrying,
-            'Retrying ${pendingBatch.length} failed samples '
-                '($attempts/$maxRetries)',
+            'Retrying ${pendingBatch.length} failed samples ($attempts/$maxRetries)',
           );
-
-          final delay = Duration(seconds: 1 << attempts);
-          await Future.delayed(delay);
+          await Future.delayed(Duration(seconds: 1 << attempts));
 
         } catch (e) {
           attempts++;
 
           if (attempts >= maxRetries) {
-            _setStatus(
-              UploadStatus.failed,
-              'Failed to upload samples',
-            );
-            debugPrint(
-              'Batch failed after $maxRetries attempts: $e',
-            );
+            _setStatus(UploadStatus.failed, 'Failed to upload samples');
+            debugPrint('Batch failed after $maxRetries attempts: $e');
             break;
           }
 
           _setStatus(
             UploadStatus.retrying,
-            'Connection issue, retrying... '
-                '($attempts/$maxRetries)',
+            'Connection issue, retrying... ($attempts/$maxRetries)',
           );
-
-          // exponential backoff
-          final delay = Duration(seconds: 1 << attempts); // 1 shifted left by attempts bits (1, 2, 4, 8, 16)
-          await Future.delayed(delay);
+          await Future.delayed(Duration(seconds: 1 << attempts));
         }
       }
+
+      // Anything left in pendingBatch exhausted all retries are permanently failed
       if (pendingBatch.isNotEmpty) {
-
-        permanentlyFailed.addAll(
-          pendingBatch.map((e) => e.signature),
-        );
-
-        // REMOVE permanently failed readings
-        final failedSignatures = permanentlyFailed.toSet();
-
-        buffer.removeWhere(
-              (r) => failedSignatures.contains(r.signature),
-        );
-
-        _samplesFailedCount += permanentlyFailed.length;
-
+        _samplesFailedCount += pendingBatch.length;
         _setStatus(
           UploadStatus.failed,
-          'Failed to send ${permanentlyFailed.length} readings',
+          'Failed to send ${pendingBatch.length} readings',
         );
       }
+
     } finally {
       _isSending = false;
+      notifyListeners();
     }
-
-    notifyListeners();
   }
 
   // -------------- Adaptive Sampling Functions --------------
