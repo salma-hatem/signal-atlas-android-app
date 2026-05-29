@@ -3,7 +3,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:vibration/vibration.dart';
-import 'package:signal_atlas/screens/coverage_requests/widgets/coverage_request_map.dart';
+import 'widgets/coverage_request_map.dart';
+import 'widgets/warning_dialogue.dart';
 
 import '../../models/coverage_request_detailed.dart';
 import '../../providers/coverage_requests_provider.dart';
@@ -543,6 +544,17 @@ class _CoverageRequestDetailsPageState extends State<CoverageRequestDetailsPage>
                     }
 
                     try {
+
+                      if (!loggingProvider.skipCoverageWarning &&
+                          !isThisRequestActive) {
+                        final confirmed = await showCoverageWarningDialog(
+                          context,
+                          loggingProvider,
+                        );
+
+                        if (!confirmed) return;
+                      }
+
                       await requestsProvider.toggleRequestLogging(
                         requestId: request.id,
                         requestTitle: request.title,

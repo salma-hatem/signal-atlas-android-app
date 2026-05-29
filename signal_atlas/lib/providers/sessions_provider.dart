@@ -52,9 +52,7 @@ class SessionProvider extends ChangeNotifier {
 
   // Delete all
   Future<void> deleteAll() async {
-    await _service.deleteAll();
-    sessions = [];
-    totalSamples = 0;
+    await _service.deleteNonRequestSessions();
 
     try {
       final deviceId = await _waitForDeviceId();
@@ -68,9 +66,13 @@ class SessionProvider extends ChangeNotifier {
       debugPrint("ERROR in deleting samples: $e");
     }
 
-    await getSamplesServer();
+    // refresh local state
+    sessions = await _service.getAllSessions();
+    totalSamples = await _service.getTotalSamples();
+
     notifyListeners();
   }
+
 
   Future<String> _waitForDeviceId() async {
     if (DeviceService.deviceId.value != null) {

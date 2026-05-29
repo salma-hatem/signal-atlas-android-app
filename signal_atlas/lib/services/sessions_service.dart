@@ -40,6 +40,16 @@ class SessionsService {
     await db.delete('sessions');
   }
 
+  Future<void> deleteNonRequestSessions() async {
+    final db = await dbInstance.database;
+
+    await db.delete(
+      'sessions',
+      where: 'isCoverageRequest = ?',
+      whereArgs: [0],
+    );
+  }
+
   // Get all sessions
   Future<List<Session>> getAllSessions() async {
     final db = await dbInstance.database;

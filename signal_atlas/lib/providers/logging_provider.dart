@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:signal_atlas/utilities/constants.dart';
 import 'package:signal_atlas/services/logging_manager.dart';
 import 'package:signal_atlas/services/network_readings_service.dart';
@@ -68,6 +69,9 @@ class LoggingProvider extends ChangeNotifier {
   String? get statusMessage => _manager.statusMessage;
   int get samplesFailedCount => _manager.samplesFailedCount;
 
+  bool _skipCoverageWarning = false;
+  bool get skipCoverageWarning => _skipCoverageWarning;
+
   Future<void> toggleLogging({
     int? requestId,
     String? requestTitle,
@@ -79,6 +83,19 @@ class LoggingProvider extends ChangeNotifier {
     } else {
       await _manager.startLogging(requestId: requestId, requestTitle: requestTitle);
     }
+    notifyListeners();
+  }
+
+  Future<void> loadPrefs() async {
+    final prefs = await SharedPreferences.getInstance();
+    _skipCoverageWarning = prefs.getBool('skipCoverageWarning') ?? false;
+    notifyListeners();
+  }
+
+  Future<void> setSkipCoverageWarning(bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('skipCoverageWarning', value);
+    _skipCoverageWarning = value;
     notifyListeners();
   }
 
