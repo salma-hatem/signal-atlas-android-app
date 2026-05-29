@@ -246,7 +246,7 @@ class _DataHubPageState extends State<DataHubPage> {
       builder: (_) => AlertDialog(
         title: const Text("Delete Data"),
         content: const Text(
-          "Are you sure you want to delete all your data on the server? This cannot be undone.",
+          "Are you sure you want to delete all your data on the server? Coverage request sessions will be kept. This action cannot be undone.",
         ),
         actions: [
           TextButton(
@@ -259,7 +259,7 @@ class _DataHubPageState extends State<DataHubPage> {
 
               await context.read<SessionProvider>().deleteAll();
 
-              showCustomSnackBar(context, "All data deleted");
+              showCustomSnackBar(context, "Data deleted");
             },
             style: TextButton.styleFrom(
               foregroundColor: Theme.of(context).colorScheme.error,
