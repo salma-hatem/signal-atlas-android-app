@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:vibration/vibration.dart';
 import 'package:signal_atlas/screens/coverage_requests/widgets/coverage_request_map.dart';
 
 import '../../models/coverage_request_detailed.dart';
@@ -35,6 +36,7 @@ class _CoverageRequestDetailsPageState extends State<CoverageRequestDetailsPage>
 
   bool _isLoading = true;
   bool isInsideArea = false;
+  bool _wasInside = true;
 
   late final CoverageAreaTrackingService _trackingService;
   StreamSubscription<bool>? _insideSub;
@@ -87,12 +89,34 @@ class _CoverageRequestDetailsPageState extends State<CoverageRequestDetailsPage>
 
     await _insideSub?.cancel();
 
-    _insideSub = _trackingService.insideStream.listen((inside) {
+    _insideSub = _trackingService.insideStream.listen((inside) async {
       if (!mounted) return;
+
+      final loggingProvider = context.read<LoggingProvider>();
+
+      final wasInside = _wasInside;
+      _wasInside = inside;
 
       setState(() {
         isInsideArea = inside;
       });
+
+      // ONLY trigger when: logging is ON + transitioned INSIDE -> OUTSIDE
+      final shouldVibrate =
+          loggingProvider.isLogging &&
+              wasInside == true &&
+              inside == false;
+
+      if (shouldVibrate) {
+        final canVibrate = await Vibration.hasVibrator() ?? false;
+
+        if (canVibrate) {
+          Vibration.vibrate(
+            duration: 500,
+            amplitude: 128,
+          );
+        }
+      }
     });
 
     if (!mounted) return;
