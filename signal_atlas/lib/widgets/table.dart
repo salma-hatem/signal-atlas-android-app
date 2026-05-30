@@ -1,17 +1,16 @@
 import 'package:flutter/material.dart';
-import 'package:signal_atlas/models/sessions.dart';
 
-class SessionColumn {
+class TableColumn<T> {
   final String title;
-  final String Function(Session session)? valueBuilder;
-  final Widget Function(Session session)? widgetBuilder;
+  final String Function(T item)? valueBuilder;
+  final Widget Function(T item)? widgetBuilder;
   final TextAlign align;
 
   final EdgeInsetsGeometry padding;
   final int flex;
   final double iconSize;
 
-  const SessionColumn({
+  const TableColumn({
     required this.title,
     this.valueBuilder,
     this.widgetBuilder,
@@ -25,15 +24,15 @@ class SessionColumn {
   });
 }
 
-class SessionsTable extends StatelessWidget {
-  final List<Session> sessions;
-  final List<SessionColumn> columns;
+class AppTable<T> extends StatelessWidget {
+  final List<T> items;
+  final List<TableColumn<T>> columns;
   final bool scrollable;
   final int? maxRows;
 
-  const SessionsTable({
+  const AppTable({
     super.key,
-    required this.sessions,
+    required this.items,
     required this.columns,
     this.scrollable = true,
     this.maxRows,
@@ -43,19 +42,19 @@ class SessionsTable extends StatelessWidget {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
 
-    final displayedSessions =
-    maxRows != null ? sessions.take(maxRows!).toList() : sessions;
+    final displayed =
+    maxRows != null ? items.take(maxRows!).toList() : items;
 
-    Widget list = ClipRRect(
+    final list = ClipRRect(
       borderRadius: BorderRadius.circular(12),
       child: ListView.builder(
         physics: scrollable
             ? const AlwaysScrollableScrollPhysics()
             : const NeverScrollableScrollPhysics(),
         shrinkWrap: !scrollable,
-        itemCount: displayedSessions.length,
+        itemCount: displayed.length,
         itemBuilder: (context, idx) {
-          final s = displayedSessions[idx];
+          final item = displayed[idx];
 
           final bgColor = idx.isEven
               ? colorScheme.primary.withAlpha(15)
@@ -63,22 +62,27 @@ class SessionsTable extends StatelessWidget {
 
           return Container(
             color: bgColor,
-            padding: EdgeInsets.zero,
             child: Row(
-              children: columns.map((col) {
-                return Expanded(
-                  flex: col.flex,
-                  child: Padding(
-                    padding: col.padding,
-                    child: col.widgetBuilder != null
-                        ? col.widgetBuilder!(s)
-                        : Text(
-                      col.valueBuilder!(s),
-                      textAlign: col.align,
+              children:  [
+                const SizedBox(width: 8),
+
+                ...columns.map((col) {
+                  return Expanded(
+                    flex: col.flex,
+                    child: Padding(
+                      padding: col.padding,
+                      child: col.widgetBuilder != null
+                          ? col.widgetBuilder!(item)
+                          : Text(
+                        col.valueBuilder!(item),
+                        textAlign: col.align,
+                      ),
                     ),
-                  ),
-                );
-              }).toList(),
+                  );
+                }),
+
+                const SizedBox(width: 8),
+              ],
             ),
           );
         },
@@ -87,43 +91,37 @@ class SessionsTable extends StatelessWidget {
 
     return Column(
       children: [
-        // Header
         Container(
-          padding: EdgeInsets.zero,
           decoration: BoxDecoration(
             color: colorScheme.primary.withAlpha(40),
             borderRadius: BorderRadius.circular(12),
           ),
           child: Row(
-            children: columns.map((col) {
-              return Expanded(
-                flex: col.flex,
-                child: Padding(
-                  padding: col.padding,
-                  child: col.title.isEmpty
-                      ? SizedBox(
-                    width: col.iconSize,
-                    height: col.iconSize,
-                  )
-                      : Text(
-                    col.title,
-                    textAlign: col.align,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
+            children: [
+              const SizedBox(width: 8),
+
+              ...columns.map((col) {
+                return Expanded(
+                  flex: col.flex,
+                  child: Padding(
+                    padding: col.padding,
+                    child: Text(
+                      col.title,
+                      textAlign: col.align,
+                      style: const TextStyle(fontWeight: FontWeight.bold),
                     ),
                   ),
-                ),
-              );
-            }).toList(),
+                );
+              }),
+
+              const SizedBox(width: 8),
+            ],
           ),
         ),
 
         const SizedBox(height: 4),
 
-        // Rows
-        scrollable
-        ? Expanded(child: list)
-        : list,
+        scrollable ? Expanded(child: list) : list,
       ],
     );
   }

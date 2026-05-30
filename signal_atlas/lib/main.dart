@@ -3,10 +3,12 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 import 'package:provider/provider.dart';
 import 'package:signal_atlas/providers/coverage_requests_provider.dart';
+import 'package:signal_atlas/providers/profile_provider.dart';
 import 'package:signal_atlas/services/device_service.dart';
 import 'package:signal_atlas/services/dashboard_service.dart';
 import 'package:signal_atlas/services/location_tracking_service.dart';
 import 'package:signal_atlas/services/platform_channel_service.dart';
+import 'package:signal_atlas/services/profile_service.dart';
 import 'package:signal_atlas/services/sessions_service.dart';
 import 'package:signal_atlas/services/permission_service.dart';
 import 'providers/network_reading_provider.dart';
@@ -63,6 +65,7 @@ void main() async {
         ChangeNotifierProvider(create: (_) => DashboardProvider(service: dashboardService)),
         ChangeNotifierProvider(create: (_) => CoverageRequestsProvider()..loadRequests()),
         Provider<NetworkReadingsService>.value(value: readingsService),
+        ChangeNotifierProvider(create: (_) => ProfileProvider(ProfileService())..loadProfile()),
       ],
       child: const App(),
     ),

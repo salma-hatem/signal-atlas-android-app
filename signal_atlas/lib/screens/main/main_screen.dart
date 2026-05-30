@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../live_data/live_data_screen.dart';
 import '../dashboard/dashboard_screen.dart';
 import '../data_hub/data_hub_screen.dart';
+import '../profile/profile_screen.dart';
 import '../coverage_requests/coverage_requests_screen.dart';
 import 'package:signal_atlas/widgets/navigation_bar.dart';
 
@@ -21,6 +22,7 @@ class _MainScreenState extends State<MainScreen> {
     DashboardPage(),
     DataHubPage(),
     CoverageRequestsPage(),
+    ProfilePage(),
   ];
 
   @override
