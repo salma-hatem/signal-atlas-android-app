@@ -65,7 +65,7 @@ void main() async {
         ChangeNotifierProvider(create: (_) => DashboardProvider(service: dashboardService)),
         ChangeNotifierProvider(create: (_) => CoverageRequestsProvider()..loadRequests()),
         Provider<NetworkReadingsService>.value(value: readingsService),
-        ChangeNotifierProvider(create: (_) => ProfileProvider(ProfileService())..loadProfile()),
+        ChangeNotifierProvider(create: (_) => ProfileProvider(ProfileService())..initialize()),
       ],
       child: const App(),
     ),

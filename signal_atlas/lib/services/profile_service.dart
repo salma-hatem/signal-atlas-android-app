@@ -1,6 +1,6 @@
 class ProfileService {
   Future<void> updateUsername(String username) async {
-    await Future.delayed(const Duration(milliseconds: 300));
+    await Future.delayed(const Duration(milliseconds: 1000));
   }
 
   Future<void> withdraw(double amount) async {
@@ -12,7 +12,7 @@ class ProfileService {
   }
 
   Future<Map<String, dynamic>> loadProfile() async {
-    await Future.delayed(const Duration(milliseconds: 5000));
+    await Future.delayed(const Duration(seconds: 2));
 
     return {
       "username": "User Name",
@@ -34,6 +34,32 @@ class ProfileService {
           "date": "Today, 11:08",
         },
       ],
+    };
+  }
+
+  Future<Map<String, dynamic>> createAccount({
+    required String username,
+    required String password,
+  }) async {
+    await Future.delayed(const Duration(seconds: 5));
+
+    // simulate username conflict
+    if (username.toLowerCase() == "admin") {
+      return {
+        "success": false,
+        "message": "Username already exists",
+      };
+    }
+
+    return {
+      "success": true,
+      "message": null,
+      "data": {
+        "username": username,
+        "credits": 0.0,
+        "devices": [],
+        "transactions": [],
+      }
     };
   }
 }

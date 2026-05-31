@@ -70,6 +70,11 @@ class _WithdrawDialogState extends State<WithdrawDialog> {
     super.dispose();
   }
 
+  bool get canWithdraw {
+    final credits = context.read<ProfileProvider>().credits;
+    return rawAmount >= minAmount && rawAmount <= (credits ?? 0);
+  }
+
   @override
   Widget build(BuildContext context) {
     final presets = [
@@ -156,7 +161,20 @@ class _WithdrawDialogState extends State<WithdrawDialog> {
                   },
                 );
               }).toList(),
-            )
+            ),
+
+            if (!canWithdraw)
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Text(
+                  "Insufficient credits",
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.error,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
 
           ],
         ),
@@ -171,10 +189,11 @@ class _WithdrawDialogState extends State<WithdrawDialog> {
         ),
 
         FilledButton(
-          onPressed: () {
+          onPressed: canWithdraw
+              ? () {
             context.read<ProfileProvider>().withdraw(rawAmount);
             Navigator.pop(context);
-          },
+          } : null,
           child: const Text("Withdraw"),
         ),
       ],

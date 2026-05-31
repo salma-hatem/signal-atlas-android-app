@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:signal_atlas/screens/profile/widgets/create_account_view.dart';
 
 import '../../providers/profile_provider.dart';
 import '../../utilities/theme/app_colors.dart';
@@ -48,6 +49,11 @@ class _ProfilePageState extends State<ProfilePage> {
     final credits = profile.credits;
     final devices = profile.devices;
     final transactions = profile.transactions;
+    final isUpdating = profile.isUpdatingUsername;
+
+    if (profile.hasAccount == false) {
+      return const CreateAccountView();
+    }
 
     return PageWrapper(
       title: "Profile",
@@ -104,7 +110,9 @@ class _ProfilePageState extends State<ProfilePage> {
 
                         InkWell(
                           borderRadius: BorderRadius.circular(20),
-                          onTap: () {
+                          onTap: isUpdating
+                              ? null
+                              : () {
                             if (_isEditingUsername) {
                               context.read<ProfileProvider>().updateUsername(
                                 _usernameController.text,
@@ -117,11 +125,23 @@ class _ProfilePageState extends State<ProfilePage> {
                               setState(() {
                                 _isEditingUsername = true;
                               });
+
+                              // re-sync field with current value every time you enter edit mode
+                              _usernameController.text = profile.username ?? "";
+                              _usernameController.selection = TextSelection.fromPosition(
+                                TextPosition(offset: _usernameController.text.length),
+                              );
                             }
                           },
                           child: Padding(
                             padding: const EdgeInsets.all(6),
-                            child: Icon(
+                            child: isUpdating
+                                ? const SizedBox(
+                                    width: 18,
+                                    height: 18,
+                                    child: CircularProgressIndicator(strokeWidth: 2),
+                                  )
+                                : Icon(
                               _isEditingUsername
                                   ? Icons.check_rounded
                                   : Icons.mode_edit_outline_outlined,
@@ -173,14 +193,15 @@ class _ProfilePageState extends State<ProfilePage> {
                             width: double.infinity,
                             child:
                               OutlinedButton.icon(
-                                onPressed: () {
+                                onPressed: !profile.isLoadingCredit
+                                    ? () {
                                   showDialog(
                                     context: context,
                                     builder: (_) => WithdrawDialog(
                                       availableCredits: credits ?? 0,
                                     ),
                                   );
-                                },
+                                } : null,
                                 style: OutlinedButton.styleFrom(
                                   side: BorderSide(
                                     color: colorScheme.primary,
