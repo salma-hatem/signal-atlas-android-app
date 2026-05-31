@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:signal_atlas/screens/profile/widgets/create_account_view.dart';
 
+import '../../models/device_model.dart';
 import '../../providers/profile_provider.dart';
 import '../../utilities/theme/app_colors.dart';
+import '../../widgets/custom_overlay_tooltip.dart';
 import '../../widgets/custom_snackbar.dart';
 import '../../widgets/page_wrapper.dart';
 import '../../widgets/shimmer_box.dart';
@@ -262,7 +264,7 @@ class _ProfilePageState extends State<ProfilePage> {
                       )
                     else
                       ...transactions!.map((tx) {
-                      final amount = (tx["amount"] as num).toDouble();
+                      final amount = (tx.amount as num).toDouble();
                       final isPositive = amount >= 0;
 
                       return Container(
@@ -298,13 +300,13 @@ class _ProfilePageState extends State<ProfilePage> {
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
                                   Text(
-                                    tx["title"] as String,
+                                    tx.title,
                                   ),
 
                                   const SizedBox(height: 2),
 
                                   Text(
-                                    tx["date"] as String,
+                                    tx.date,
                                     style: theme.textTheme.bodySmall?.copyWith(
                                       color: colorScheme.outline,
                                     ),
@@ -376,34 +378,69 @@ class _ProfilePageState extends State<ProfilePage> {
                               ),
                             ),
                           )
-                        : AppTable<Map<String, dynamic>>(
+                        : AppTable<DeviceModel>(
                           items: devices!,
                           scrollable: false,
                           columns: [
+                            TableColumn(
+                              title: "",
+                              flex: 0,
+                              padding: const EdgeInsets.only(
+                                left: 2,
+                                top: 2,
+                                bottom: 2,
+                                right: 8,
+                              ),
+                              widgetBuilder: (d) {
+                                final isCurrent = profile.deviceId == d.id;
+
+                                return isCurrent ?
+                                CustomOverlayTooltip(
+                                  tooltip: "This Device",
+                                  child: Container(
+                                    width: 28,
+                                    height: 28,
+                                    decoration: BoxDecoration(
+                                      color: colorScheme.primary.withAlpha(30),
+                                      borderRadius: BorderRadius.circular(6),
+                                      border: Border.all(
+                                        color: colorScheme.primary.withAlpha(80),
+                                      ),
+                                    ),
+                                    child: Icon(
+                                      Icons.smartphone,
+                                      size: 16,
+                                      color: colorScheme.primary,
+                                    ),
+                                  ),
+                                ): SizedBox.shrink();
+                              },
+                            ),
+
                             // Device ID
-                            TableColumn<Map<String, dynamic>>(
+                            TableColumn<DeviceModel>(
                               title: "Device ID",
                               flex: 4,
                               align: TextAlign.left,
-                              valueBuilder: (d) => d["id"],
+                              valueBuilder: (d) => d.id,
                             ),
 
                             // Samples
-                            TableColumn<Map<String, dynamic>>(
+                            TableColumn<DeviceModel>(
                               title: "Samples",
                               flex: 2,
                               align: TextAlign.center,
-                              valueBuilder: (d) => "${d["samples"]}",
+                              valueBuilder: (d) => "${d.samples ?? "--"}",
                             ),
 
                             // Action column (delete)
-                            TableColumn<Map<String, dynamic>>(
+                            TableColumn<DeviceModel>(
                               title: "",
                               flex: 1,
                               widgetBuilder: (d) => Center(
                                 child: InkWell(
                                   onTap: () {
-                                    _showDeleteDialog(context);
+                                    _showDeleteDialog(context, d);
                                   },
                                   borderRadius: BorderRadius.circular(6),
                                   child: Padding(
@@ -430,7 +467,7 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  void _showDeleteDialog(BuildContext context) {
+  void _showDeleteDialog(BuildContext context, DeviceModel device) {
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
@@ -447,7 +484,7 @@ class _ProfilePageState extends State<ProfilePage> {
             onPressed: () async {
               Navigator.pop(context);
 
-              // context.read<ProfileProvider>().deleteDevice(d["id"]);
+              context.read<ProfileProvider>().deleteDevice(device);
 
               showCustomSnackBar(context, "Data deleted");
             },

@@ -84,6 +84,26 @@ class ApiService {
     return jsonDecode(response.body);
   }
 
+  // POST
+  static Future<dynamic> post(String path, {Map<String, dynamic>? body}) async {
+    final response = await http.post(
+      Uri.parse("$baseUrl$path"),
+      headers: _headers,
+      body: jsonEncode(body ?? {}),
+    );
+
+    final data = jsonDecode(response.body);
+
+    if (response.statusCode >= 200 &&
+        response.statusCode < 300) {
+      return data;
+    }
+
+    throw Exception(
+      data["detail"] ?? "API error",
+    );
+  }
+
   // DELETE
   static Future<bool> delete(String path, {Map<String, dynamic>? query}) async {
 
@@ -101,5 +121,25 @@ class ApiService {
       debugPrint('DELETE error: $e');
       return false;
     }
+  }
+
+  // PATCH
+  static Future<dynamic> patch(String path, {Map<String, dynamic>? body}) async {
+    final response = await http.patch(
+      Uri.parse("$baseUrl$path"),
+      headers: _headers,
+      body: jsonEncode(body ?? {}),
+    );
+
+    final data = jsonDecode(response.body);
+
+    if (response.statusCode >= 200 &&
+        response.statusCode < 300) {
+      return data;
+    }
+
+    throw Exception(
+      data["detail"] ?? "API error",
+    );
   }
 }
