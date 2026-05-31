@@ -19,6 +19,11 @@ enum UploadStatus {
   success,
 }
 
+enum AuthMode {
+  create,
+  attach,
+}
+
 class AndroidChannel {
   static const channel = MethodChannel('com.example.signal_atlas');
 }

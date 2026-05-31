@@ -102,6 +102,11 @@ class ProfileProvider extends ChangeNotifier {
   }
 
   // ----------------------------
+  // Register the Device to existing Account
+  // ----------------------------
+  void attachDeviceToAccount({required String username, required String password}) {}
+
+  // ----------------------------
   // Load Profile
   // ----------------------------
   Future<void> loadProfile() async {

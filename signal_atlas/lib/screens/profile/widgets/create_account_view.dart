@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../../providers/profile_provider.dart';
+import '../../../utilities/constants.dart';
 
 class CreateAccountView extends StatefulWidget {
   const CreateAccountView({super.key});
@@ -13,6 +14,8 @@ class CreateAccountView extends StatefulWidget {
 class _CreateAccountViewState extends State<CreateAccountView> {
   final usernameController = TextEditingController();
   final passwordController = TextEditingController();
+
+  AuthMode _mode = AuthMode.create;
 
   bool _obscurePassword = true;
 
@@ -65,7 +68,7 @@ class _CreateAccountViewState extends State<CreateAccountView> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // 🔵 Icon with outline + primary color
+                // Person Icon
                 Container(
                   padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
@@ -75,7 +78,7 @@ class _CreateAccountViewState extends State<CreateAccountView> {
                     ),
                   ),
                   child: Icon(
-                    Icons.person_add_alt_1,
+                    _mode == AuthMode.create ? Icons.person_add_alt_1 : Icons.person,
                     size: 44,
                     color: colorScheme.primary,
                   ),
@@ -84,10 +87,48 @@ class _CreateAccountViewState extends State<CreateAccountView> {
                 const SizedBox(height: 14),
 
                 Text(
-                  "Create Account",
+                  _mode == AuthMode.create
+                      ? "Create Account"
+                      : "Register Device",
                   style: Theme.of(context).textTheme.titleLarge?.copyWith(
                     fontWeight: FontWeight.w600,
                   ),
+                ),
+
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      _mode == AuthMode.create
+                          ? "Already have an account?"
+                          : "Need a new account?",
+                      style: TextStyle(
+                        color: colorScheme.outline,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+
+                    GestureDetector(
+                      onTap: () {
+                        setState(() {
+                          _mode = _mode == AuthMode.create
+                              ? AuthMode.attach
+                              : AuthMode.create;
+                        });
+                      },
+                      child: Text(
+                        _mode == AuthMode.create
+                            ? "Register device"
+                            : "Create account",
+                        style: TextStyle(
+                          color: colorScheme.primary,
+                          fontWeight: FontWeight.w600,
+                          decoration: TextDecoration.underline,
+                          decorationColor: colorScheme.primary,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
 
                 const SizedBox(height: 22),
@@ -159,20 +200,25 @@ class _CreateAccountViewState extends State<CreateAccountView> {
                 SizedBox(
                   width: double.infinity,
                   child: FilledButton(
-                    onPressed: (_isFormValid)
-                        ? () {
+                    onPressed: (!_isFormValid || profile.isCreatingAccount)
+                        ? null
+                        : () {
                       _unfocus();
 
-                      context.read<ProfileProvider>().createAccount(
-                        username: usernameController.text.trim(),
-                        password: passwordController.text.trim(),
-                      );
-                    }
-                    : profile.isCreatingAccount
-                      ? () {}
-                      : null,
+                      if (_mode == AuthMode.create) {
+                        context.read<ProfileProvider>().createAccount(
+                          username: usernameController.text.trim(),
+                          password: passwordController.text.trim(),
+                        );
+                      } else {
+                        context.read<ProfileProvider>().attachDeviceToAccount(
+                          username: usernameController.text.trim(),
+                          password: passwordController.text.trim(),
+                        );
+                      }
+                    },
                     child: profile.isCreatingAccount
-                        ? Row (
+                        ? Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             SizedBox(
@@ -184,10 +230,18 @@ class _CreateAccountViewState extends State<CreateAccountView> {
                               ),
                             ),
                             const SizedBox(width: 8),
-                            const Text("Creating Account")
+                            Text(
+                              _mode == AuthMode.create
+                                  ? "Creating Account"
+                                  : "Register Device",
+                            )
                           ],
                         )
-                        : const Text("Create Account"),
+                            : Text(
+                          _mode == AuthMode.create
+                              ? "Create Account"
+                              : "Register Device",
+                        ),
                   ),
                 ),
 
