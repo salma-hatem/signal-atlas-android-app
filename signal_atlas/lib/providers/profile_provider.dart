@@ -82,12 +82,20 @@ class ProfileProvider extends ChangeNotifier {
   }
 
   Future<void> createAccount({
+    required String email,
     required String username,
     required String password,
+    required String confirmPassword,
   }) async {
 
     if (_deviceId == null) {
       _createAccountError = "Unable to identify device";
+      return;
+    }
+
+    if (password != confirmPassword) {
+      _createAccountError = "Passwords do not match";
+      notifyListeners();
       return;
     }
 
@@ -97,6 +105,8 @@ class ProfileProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
+      // TODO: here pass email and password for authentication
+      // TODO: then use username to create new profile
       final result = await _service.createAccount(
         username: username,
         password: password,
@@ -133,9 +143,10 @@ class ProfileProvider extends ChangeNotifier {
   // Register the Device to existing Account
   // ----------------------------
   Future<void> attachDeviceToAccount({
-    required String username,
+    required String email,
     required String password,
   }) async {
+    // TODO: use email and password for authentication then call api to attach the device to the account
     if (_deviceId == null) {
       _createAccountError = "Unable to identify device";
       notifyListeners();
@@ -149,7 +160,7 @@ class ProfileProvider extends ChangeNotifier {
     try {
       // Login
       final result = await _service.login(
-        username: username,
+        username: email,
         password: password,
       );
 
