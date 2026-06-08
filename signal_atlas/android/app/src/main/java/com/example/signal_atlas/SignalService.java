@@ -31,7 +31,7 @@ public class SignalService extends Service {
 
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
 
-    private Double lastLat = null, lastLng = null, lastAlt = null;
+    private Double lastLat = null, lastLng = null, lastAlt = 0.0;
     private volatile float latestAccuracy = -1;
     private volatile String latestIndoorOutdoor = "Unknown";
 
@@ -41,6 +41,7 @@ public class SignalService extends Service {
     private volatile double latestSpeedMps = 0;
 
     private LocationCallback locationCallback;
+    private MethodChannel channel;
 
     @Override
     public void onCreate() {
@@ -48,6 +49,11 @@ public class SignalService extends Service {
 
         telephonyManager = (TelephonyManager) getSystemService(Context.TELEPHONY_SERVICE);
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
+
+        channel = new MethodChannel(
+                MainActivity.sharedEngine.getDartExecutor().getBinaryMessenger(),
+                "com.example.signal_atlas"
+        );
 
         startLocationTracking();
     }
@@ -310,14 +316,11 @@ public class SignalService extends Service {
     }
 
     private void sendToFlutter(Map<String, Object> data) {
-        if (MainActivity.sharedEngine == null) return;
+        if (channel == null) return;
 
         new android.os.Handler(getMainLooper()).post(() -> {
             try {
-                new MethodChannel(
-                        MainActivity.sharedEngine.getDartExecutor().getBinaryMessenger(),
-                        "com.example.signal_atlas"
-                ).invokeMethod("newNetworkReading", data);
+                channel.invokeMethod("newNetworkReading", data);
             } catch (Exception ignored) {}
         });
     }

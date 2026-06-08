@@ -60,12 +60,15 @@ public class MainActivity extends FlutterActivity {
 
     private void requestBatteryOptimizationDisable() {
         try {
-            Intent intent = new Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS);
+            Intent intent = new Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS);
+            intent.setData(android.net.Uri.parse("package:" + getPackageName()));
             intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             startActivity(intent);
 
             returnedFromBatterySettings = true;
-        } catch (Exception ignored) {}
+        } catch (Exception ignored) {
+            // fallback if ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS fails
+        }
     }
 
     @Override

@@ -111,7 +111,7 @@ class NetworkReading {
       altitude: parseValue<double>(raw['Altitude'], defaultValue: 0.0),
       city: raw['city']?.toString(),
       country: raw['country']?.toString(),
-      gpsAccuracy: parseValue<double>(raw['Altitude'], defaultValue: 0.0),
+      gpsAccuracy: parseValue<double>(raw['Accuracy'], defaultValue: 0.0),
       indoorOutdoor: raw['IndoorOutdoor']?.toString(),
       timestamp: DateTime.fromMillisecondsSinceEpoch(
           raw['Timestamp'] ?? DateTime.now().millisecondsSinceEpoch),

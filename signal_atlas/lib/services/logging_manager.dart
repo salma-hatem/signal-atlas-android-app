@@ -83,6 +83,8 @@ class LoggingManager extends ChangeNotifier {
     _isLogging = true;
     _sendInterval = interval ?? const Duration(seconds: 2);
 
+    await readingsService.startBackgroundService();
+
     _scheduleNextTick();
 
     await notificationsPlugin.show(
@@ -150,6 +152,23 @@ class LoggingManager extends ChangeNotifier {
       _isStopping = false;
       notifyListeners();
     }
+    // Save session once
+    if (!sessionSaved && samplesSentCount != 0) {
+      sessionEnd = DateTime.now();
+      final sessionDuration = sessionEnd.difference(sessionStart);
+      Session session = Session(
+        date: DateTime.now(),
+        duration: sessionDuration,
+        sampleCount: samplesSentCount,
+      );
+
+      await sessionProvider.addSession(session);
+      sessionSaved = true;
+      debugPrint("Session saved: $session");
+    }
+
+    await notificationsPlugin.cancel(id: 2);
+    await readingsService.stopBackgroundService();
   }
 
   Future<void> sendBatch() async {

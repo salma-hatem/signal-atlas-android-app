@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../live_data/live_data_screen.dart';
 import '../dashboard/dashboard_screen.dart';
 import '../data_hub/data_hub_screen.dart';
 import '../coverage_requests/coverage_requests_screen.dart';
+import '../../pages/login_page.dart';
+import '../../providers/auth_provider.dart';
 import 'package:signal_atlas/widgets/navigation_bar.dart';
 
 class MainScreen extends StatefulWidget {
@@ -31,27 +34,39 @@ class _MainScreenState extends State<MainScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: PageView(
-        controller: _pageController,
-        onPageChanged: (index) {
-          // Update nav bar when swiping
-          setState(() => _currentIndex = index);
-        },
-        children: _screens,
-      ),
-      bottomNavigationBar: CustomNavigationBar(
-        currentIndex: _currentIndex,
-        onTap: (index) {
-          // Update nav bar and animate PageView
-          setState(() => _currentIndex = index);
-          _pageController.animateToPage(
-            index,
-            duration: const Duration(milliseconds: 300),
-            curve: Curves.easeOut,
+    return Consumer<AuthProvider>(
+      builder: (context, auth, _) {
+        if (auth.loading) {
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
           );
-        },
-      ),
+        }
+
+        if (!auth.isAuthenticated) {
+          return const LoginPage();
+        }
+
+        return Scaffold(
+          body: PageView(
+            controller: _pageController,
+            onPageChanged: (index) {
+              setState(() => _currentIndex = index);
+            },
+            children: _screens,
+          ),
+          bottomNavigationBar: CustomNavigationBar(
+            currentIndex: _currentIndex,
+            onTap: (index) {
+              setState(() => _currentIndex = index);
+              _pageController.animateToPage(
+                index,
+                duration: const Duration(milliseconds: 300),
+                curve: Curves.easeOut,
+              );
+            },
+          ),
+        );
+      },
     );
   }
 }

@@ -3,13 +3,22 @@ import 'package:flutter/cupertino.dart';
 import 'package:http/http.dart' as http;
 import '../models/network_reading.dart';
 import '../utilities//constants.dart';
+import 'supabase_service.dart';
 
 class ApiService {
-  static final baseUrl = ApiConfig.baseUrl; 
-  static const _headers = {
-    'Content-Type': 'application/json',
-    'X-API-Key': ApiConfig.apiKey,
-  };
+  static final baseUrl = ApiConfig.baseUrl;
+
+  static Map<String, String> get _headers {
+    final headers = <String, String>{
+      'Content-Type': 'application/json',
+      'X-API-Key': ApiConfig.apiKey,
+    };
+    final token = SupabaseService.accessToken;
+    if (token != null) {
+      headers['Authorization'] = 'Bearer $token';
+    }
+    return headers;
+  }
 
   // Sending data using POST
   static Future<bool> sendReading(NetworkReading reading) async {

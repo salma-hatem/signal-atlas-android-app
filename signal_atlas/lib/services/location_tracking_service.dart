@@ -14,8 +14,6 @@ class LocationTrackingService {
   double? lastAlt;
 
   Future<void> start() async {
-    await Geolocator.requestPermission();
-
     _positionSub = Geolocator.getPositionStream(
       locationSettings: const LocationSettings(
         accuracy: LocationAccuracy.best,

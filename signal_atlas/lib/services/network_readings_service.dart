@@ -49,6 +49,14 @@ class NetworkReadingsService {
   // Add reading from Raw Data
   Future<void> addReadingFromRawData(Map<String, dynamic> rawData) async {
 
+    // Skip geocoding if coordinates are missing
+    if (rawData["Latitude"] == null || rawData["Longitude"] == null) {
+      final reading = NetworkReading.fromRaw(rawData);
+      _readings.add(reading);
+      _readingController.add(reading);
+      return;
+    }
+
     // Reverse geocode
     final locationData = await GeocodingService.getCityCountry(rawData["Latitude"], rawData["Longitude"]);
 

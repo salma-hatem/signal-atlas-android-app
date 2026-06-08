@@ -2,7 +2,12 @@ import 'package:flutter/services.dart';
 
 class ApiConfig {
   static const String baseUrl = String.fromEnvironment('BASE_URL'); // Container backend url
-  static const String apiKey = String.fromEnvironment('API_KEY'); 
+  static const String apiKey = String.fromEnvironment('API_KEY');
+}
+
+class SupabaseConfig {
+  static const String url = String.fromEnvironment('SUPABASE_URL');
+  static const String anonKey = String.fromEnvironment('SUPABASE_ANON_KEY');
 }
 
 enum ServerState {
