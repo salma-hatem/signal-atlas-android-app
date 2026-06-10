@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 
 import '../models/device_model.dart';
@@ -29,7 +28,6 @@ class ProfileProvider extends ChangeNotifier {
   List<DeviceModel>? _devices;
   List<TransactionModel>? _transactions;
 
-
   // ----------------------------
   // Getters
   // ----------------------------
@@ -50,36 +48,25 @@ class ProfileProvider extends ChangeNotifier {
   String? get createAccountError => _createAccountError;
 
   // ----------------------------
-  // Create Account if it doesnt exist
+  // Initialize - check existing session
   // ----------------------------
 
   Future<void> initialize() async {
     _deviceId = await waitForDeviceId();
 
-    if (_deviceId == null) {
+    if (_service.isSignedIn && _service.currentUserId != null) {
+      _profileId = _service.currentUserId;
+      _hasAccount = true;
+      await loadProfile();
+    } else {
       _hasAccount = false;
-      notifyListeners();
-      return;
-    }
-
-    try {
-      final result = await _service.getAccountByDevice(_deviceId!);
-
-      _hasAccount = result["account_exists"];
-
-      if (_hasAccount == true) {
-        final profile = result["profile"];
-
-        _profileId = profile["id"];
-
-        await loadProfile();
-      }
-    } catch (_) {
-      _hasAccount = false;
-    } finally {
       notifyListeners();
     }
   }
+
+  // ----------------------------
+  // Create Account
+  // ----------------------------
 
   Future<void> createAccount({
     required String email,
@@ -87,7 +74,6 @@ class ProfileProvider extends ChangeNotifier {
     required String password,
     required String confirmPassword,
   }) async {
-
     if (_deviceId == null) {
       _createAccountError = "Unable to identify device";
       return;
@@ -101,31 +87,33 @@ class ProfileProvider extends ChangeNotifier {
 
     _isCreatingAccount = true;
     _createAccountError = null;
-
     notifyListeners();
 
     try {
-      // TODO: here pass email and password for authentication
-      // TODO: then use username to create new profile
-      final result = await _service.createAccount(
-        username: username,
-        password: password,
-        deviceId: _deviceId ?? "",
-      );
+      await _service.signUp(email: email, password: password);
 
-      final success = result["success"] as bool;
-
-      if (!success) {
-        _createAccountError = result["message"] as String?;
+      final userId = _service.currentUserId;
+      if (userId == null) {
+        _createAccountError = "Sign up succeeded but no user ID returned";
         return;
       }
 
-      final data = result["data"] as Map<String, dynamic>;
-
-      _profileId = data["id"];
+      _profileId = userId;
       _hasAccount = true;
 
+      await _service.updateProfile(
+        userId: userId,
+        updates: {"username": username},
+      );
+
+      await _service.registerDevice(
+        userId: userId,
+        deviceId: _deviceId!,
+      );
+
       await loadProfile();
+    } catch (e) {
+      _createAccountError = e.toString();
     } finally {
       _isCreatingAccount = false;
       notifyListeners();
@@ -140,13 +128,12 @@ class ProfileProvider extends ChangeNotifier {
   }
 
   // ----------------------------
-  // Register the Device to existing Account
+  // Sign In / Attach Device
   // ----------------------------
   Future<void> attachDeviceToAccount({
     required String email,
     required String password,
   }) async {
-    // TODO: use email and password for authentication then call api to attach the device to the account
     if (_deviceId == null) {
       _createAccountError = "Unable to identify device";
       notifyListeners();
@@ -158,48 +145,23 @@ class ProfileProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      // Login
-      final result = await _service.login(
-        username: email,
-        password: password,
-      );
+      await _service.signIn(email: email, password: password);
 
-      if (result["success"] != true) {
-        _createAccountError = result["message"] ?? "Login failed";
-        notifyListeners();
+      final userId = _service.currentUserId;
+      if (userId == null) {
+        _createAccountError = "Sign in succeeded but no user ID returned";
         return;
-      }
-
-      final profile = result["profile"] as Map<String, dynamic>;
-
-      final userId = profile["id"] as String;
-
-      // Attach Device
-      final attachRes = await _service.attachDeviceToAccount(
-        userId: userId,
-        deviceId: _deviceId!,
-      );
-
-      if (attachRes["success"] != true) {
-        throw Exception(attachRes["message"] ?? "Failed to attach device");
       }
 
       _profileId = userId;
       _hasAccount = true;
 
-      // Update State
-      _username = profile["username"];
-      _credits = double.parse(profile["credits"].toString());
+      await _service.registerDevice(
+        userId: userId,
+        deviceId: _deviceId!,
+      );
 
-      _devices = (profile["device_ids"] as List<dynamic>? ?? [])
-          .map((id) => DeviceModel(id: id as String))
-          .toList();
-
-      _transactions = (profile["transactions"] as List)
-          .map((t) => TransactionModel.fromJson(t))
-          .toList();
-
-      notifyListeners();
+      await loadProfile();
     } catch (e) {
       _createAccountError = e.toString();
       notifyListeners();
@@ -219,22 +181,23 @@ class ProfileProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final profile = await _service.loadProfile(_profileId!);
+      final profile = await _service.fetchProfile(_profileId!);
 
       _username = profile["username"];
-      _credits = double.parse(profile["credits"].toString());
+      _credits = double.tryParse(profile["credits"]?.toString() ?? "0") ?? 0.0;
 
-      _devices = (profile["device_ids"] as List)
-          .map((id) => DeviceModel(id: id.toString()))
+      final deviceRows = await _service.fetchDevices(_profileId!);
+      _devices = deviceRows
+          .map((d) => DeviceModel(id: d["device_id"]?.toString() ?? ""))
           .toList();
 
-      if(_devices != null) {
+      if (_devices != null) {
         for (final d in _devices!) {
           fetchDeviceSamples(d);
         }
       }
 
-      _transactions = await _service.getTransactions(_profileId!);
+      _transactions = await _service.fetchTransactions(_profileId!);
     } catch (e) {
       debugPrint(e.toString());
     } finally {
@@ -253,12 +216,12 @@ class ProfileProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final data = await _service.updateUsername(
-        profileId: _profileId!,
-        username: newUsername,
+      await _service.updateProfile(
+        userId: _profileId!,
+        updates: {"username": newUsername},
       );
 
-      _username = data["username"];
+      _username = newUsername;
     } catch (e) {
       debugPrint(e.toString());
     } finally {
@@ -293,7 +256,6 @@ class ProfileProvider extends ChangeNotifier {
     await loadProfile();
   }
 
-
   // ----------------------------
   // Get Devices Sample Count
   // ----------------------------
@@ -327,7 +289,6 @@ class ProfileProvider extends ChangeNotifier {
 
     try {
       await _service.deleteDeviceSamples(device.id);
-
     } catch (e) {
       debugPrint("ERROR deleting device: $e");
       _devices![index].isDeleting = false;
@@ -335,5 +296,4 @@ class ProfileProvider extends ChangeNotifier {
 
     notifyListeners();
   }
-
 }
