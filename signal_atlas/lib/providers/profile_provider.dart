@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../models/device_model.dart';
-import '../models/transaction_model.dart';
 import '../services/profile_service.dart';
 import '../utilities/get_device_id.dart';
 
@@ -26,7 +25,7 @@ class ProfileProvider extends ChangeNotifier {
   bool _isLoadingCredit = true;
 
   List<DeviceModel>? _devices;
-  List<TransactionModel>? _transactions;
+  List<Map<String, dynamic>>? _transactions;
 
   // ----------------------------
   // Getters
@@ -41,7 +40,7 @@ class ProfileProvider extends ChangeNotifier {
   bool get isLoadingCredit => _isLoadingCredit;
 
   List<DeviceModel>? get devices => _devices;
-  List<TransactionModel>? get transactions => _transactions;
+  List<Map<String, dynamic>>? get transactions => _transactions;
 
   bool? get hasAccount => _hasAccount;
   bool get isCreatingAccount => _isCreatingAccount;
@@ -54,8 +53,11 @@ class ProfileProvider extends ChangeNotifier {
   Future<void> initialize() async {
     _deviceId = await waitForDeviceId();
 
-    if (_service.isSignedIn && _service.currentUserId != null) {
-      _profileId = _service.currentUserId;
+    final signedIn = await _service.isSignedIn;
+    final userId = await _service.currentUserId;
+
+    if (signedIn && userId != null) {
+      _profileId = userId;
       _hasAccount = true;
       await loadProfile();
     } else {
@@ -90,9 +92,14 @@ class ProfileProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      await _service.signUp(email: email, password: password);
+      await _service.signUp(
+        email: email,
+        password: password,
+        username: username,
+        deviceId: _deviceId,
+      );
 
-      final userId = _service.currentUserId;
+      final userId = await _service.currentUserId;
       if (userId == null) {
         _createAccountError = "Sign up succeeded but no user ID returned";
         return;
@@ -100,16 +107,6 @@ class ProfileProvider extends ChangeNotifier {
 
       _profileId = userId;
       _hasAccount = true;
-
-      await _service.updateProfile(
-        userId: userId,
-        updates: {"username": username},
-      );
-
-      await _service.registerDevice(
-        userId: userId,
-        deviceId: _deviceId!,
-      );
 
       await loadProfile();
     } catch (e) {
@@ -122,7 +119,6 @@ class ProfileProvider extends ChangeNotifier {
 
   void clearCreateAccountError() {
     if (_createAccountError == null) return;
-
     _createAccountError = null;
     notifyListeners();
   }
@@ -145,9 +141,13 @@ class ProfileProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      await _service.signIn(email: email, password: password);
+      await _service.signIn(
+        email: email,
+        password: password,
+        deviceId: _deviceId,
+      );
 
-      final userId = _service.currentUserId;
+      final userId = await _service.currentUserId;
       if (userId == null) {
         _createAccountError = "Sign in succeeded but no user ID returned";
         return;
@@ -155,11 +155,6 @@ class ProfileProvider extends ChangeNotifier {
 
       _profileId = userId;
       _hasAccount = true;
-
-      await _service.registerDevice(
-        userId: userId,
-        deviceId: _deviceId!,
-      );
 
       await loadProfile();
     } catch (e) {
@@ -183,7 +178,7 @@ class ProfileProvider extends ChangeNotifier {
     try {
       final profile = await _service.fetchProfile(_profileId!);
 
-      _username = profile["username"];
+      _username = profile["username"] as String?;
       _credits = double.tryParse(profile["credits"]?.toString() ?? "0") ?? 0.0;
 
       final deviceRows = await _service.fetchDevices(_profileId!);
@@ -237,18 +232,7 @@ class ProfileProvider extends ChangeNotifier {
     if ((_credits ?? 0) < amount) return;
 
     await _service.withdraw(amount);
-
     _credits = (_credits ?? 0) - amount;
-
-    _transactions ??= [];
-    _transactions!.insert(
-      0,
-      TransactionModel(
-        title: "Withdrawal",
-        amount: -amount,
-        date: "Just now",
-      ),
-    );
 
     _credits = null;
     notifyListeners();

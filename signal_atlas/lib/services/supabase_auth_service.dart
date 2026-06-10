@@ -1,53 +1,109 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
+import 'api_service.dart';
 
-import 'package:supabase_flutter/supabase_flutter.dart';
+class AuthResult {
+  final String accessToken;
+  final String refreshToken;
+  final String userId;
+  final String? username;
 
-import '../models/transaction_model.dart';
+  AuthResult({
+    required this.accessToken,
+    required this.refreshToken,
+    required this.userId,
+    this.username,
+  });
+}
 
 class SupabaseAuthService {
-  SupabaseClient get _client => Supabase.instance.client;
-
   // -------------------------------------------------------
-  // Auth
+  // Auth — now uses backend API instead of Supabase directly
   // -------------------------------------------------------
 
-  Future<void> signUp({
+  Future<AuthResult> signUp({
     required String email,
     required String password,
+    required String username,
+    String? deviceId,
   }) async {
-    final response = await _client.auth.signUp(
-      email: email,
-      password: password,
+    final data = await ApiService.post(
+      '/api/auth/register',
+      body: {
+        'email': email,
+        'password': password,
+        'username': username,
+        if (deviceId != null) 'device_id': deviceId,
+      },
+      auth: false,
     );
-    if (response.user == null) {
-      throw Exception('Sign up failed: no user returned');
-    }
+
+    final accessToken = data['access_token'] as String;
+    final refreshToken = data['refresh_token'] as String;
+    final userId = data['user']['id'] as String;
+
+    await ApiService.storeTokens(accessToken, refreshToken);
+
+    return AuthResult(
+      accessToken: accessToken,
+      refreshToken: refreshToken,
+      userId: userId,
+      username: data['user']?['username'] as String?,
+    );
   }
 
-  Future<void> signIn({
+  Future<AuthResult> signIn({
     required String email,
     required String password,
+    String? deviceId,
   }) async {
-    final response = await _client.auth.signInWithPassword(
-      email: email,
-      password: password,
+    final data = await ApiService.post(
+      '/api/auth/login',
+      body: {
+        'email': email,
+        'password': password,
+        if (deviceId != null) 'device_id': deviceId,
+      },
+      auth: false,
     );
-    if (response.user == null) {
-      throw Exception('Sign in failed: no user returned');
-    }
+
+    final accessToken = data['access_token'] as String;
+    final refreshToken = data['refresh_token'] as String;
+    final userId = data['user']['id'] as String;
+
+    await ApiService.storeTokens(accessToken, refreshToken);
+
+    return AuthResult(
+      accessToken: accessToken,
+      refreshToken: refreshToken,
+      userId: userId,
+      username: data['user']?['username'] as String?,
+    );
   }
 
   Future<void> signOut() async {
-    await _client.auth.signOut();
+    try {
+      await ApiService.post('/api/auth/logout', auth: true);
+    } catch (_) {
+      // Ignore errors on logout
+    }
+    await ApiService.clearTokens();
   }
 
-  User? get currentUser => _client.auth.currentUser;
-  Session? get currentSession => _client.auth.currentSession;
+  Future<String?> get currentUserId async {
+    final authenticated = await ApiService.isAuthenticated();
+    if (!authenticated) return null;
 
-  StreamSubscription<AuthState> onAuthStateChange(
-    void Function(AuthState data) callback,
-  ) {
-    return _client.auth.onAuthStateChange.listen(callback);
+    try {
+      final data = await ApiService.get('/api/users/me', auth: true);
+      return data['id'] as String?;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<bool> get isSignedIn async {
+    return await ApiService.isAuthenticated();
   }
 
   // -------------------------------------------------------
@@ -55,23 +111,15 @@ class SupabaseAuthService {
   // -------------------------------------------------------
 
   Future<Map<String, dynamic>> fetchProfile(String userId) async {
-    final Map<String, dynamic> response = await _client
-        .from('profiles')
-        .select()
-        .eq('id', userId)
-        .single();
-
-    return response;
+    final data = await ApiService.get('/api/profile/$userId', auth: true);
+    return data as Map<String, dynamic>;
   }
 
   Future<void> updateProfile({
     required String userId,
     required Map<String, dynamic> updates,
   }) async {
-    await _client
-        .from('profiles')
-        .update(updates)
-        .eq('id', userId);
+    await ApiService.patch('/api/profile/$userId', body: updates, auth: true);
   }
 
   // -------------------------------------------------------
@@ -79,47 +127,54 @@ class SupabaseAuthService {
   // -------------------------------------------------------
 
   Future<List<Map<String, dynamic>>> fetchDevices(String userId) async {
-    final response = await _client
-        .from('user_devices')
-        .select()
-        .eq('user_id', userId);
-
-    return (response as List).map((e) => e as Map<String, dynamic>).toList();
+    final data = await ApiService.get('/api/users/me/devices', auth: true);
+    if (data is List) {
+      return data.cast<Map<String, dynamic>>();
+    }
+    return [];
   }
 
   Future<void> registerDevice({
     required String userId,
     required String deviceId,
   }) async {
-    await _client.from('user_devices').insert({
-      'user_id': userId,
-      'device_id': deviceId,
-      'created_at': DateTime.now().toIso8601String(),
-      'last_seen_at': DateTime.now().toIso8601String(),
-    });
+    await ApiService.post(
+      '/api/users/me/devices',
+      body: {'device_id': deviceId},
+      auth: true,
+    );
   }
 
   Future<void> unregisterDevice(int deviceId) async {
-    await _client
-        .from('user_devices')
-        .delete()
-        .eq('id', deviceId);
+    await ApiService.delete('/api/users/me/devices/$deviceId', auth: true);
+  }
+
+  // -------------------------------------------------------
+  // Device check (for Android device-first flow)
+  // -------------------------------------------------------
+
+  Future<Map<String, dynamic>> checkDevice(String deviceId) async {
+    final data = await ApiService.post(
+      '/api/account/by-device',
+      body: {'device_id': deviceId},
+      auth: false,
+    );
+    return data as Map<String, dynamic>;
   }
 
   // -------------------------------------------------------
   // Wallet / Transactions
   // -------------------------------------------------------
 
-  Future<List<TransactionModel>> fetchTransactions(String userId) async {
-    final response = await _client
-        .from('wallet_transactions')
-        .select()
-        .eq('user_id', userId)
-        .order('created_at', ascending: false)
-        .limit(5);
-
-    return (response as List)
-        .map((t) => TransactionModel.fromJson(t as Map<String, dynamic>))
-        .toList();
+  Future<List<Map<String, dynamic>>> fetchTransactions(String userId) async {
+    final data = await ApiService.get(
+      '/api/wallet/$userId/transactions?limit=50',
+      auth: true,
+    );
+    final transactions = data['transactions'];
+    if (transactions is List) {
+      return transactions.cast<Map<String, dynamic>>();
+    }
+    return [];
   }
 }

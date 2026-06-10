@@ -1,4 +1,3 @@
-import '../models/transaction_model.dart';
 import 'api_service.dart';
 import 'supabase_auth_service.dart';
 
@@ -14,24 +13,40 @@ class ProfileService {
   Future<void> signUp({
     required String email,
     required String password,
+    required String username,
+    String? deviceId,
   }) async {
-    await _supabaseAuth.signUp(email: email, password: password);
+    await _supabaseAuth.signUp(
+      email: email,
+      password: password,
+      username: username,
+      deviceId: deviceId,
+    );
   }
 
   Future<void> signIn({
     required String email,
     required String password,
+    String? deviceId,
   }) async {
-    await _supabaseAuth.signIn(email: email, password: password);
+    await _supabaseAuth.signIn(
+      email: email,
+      password: password,
+      deviceId: deviceId,
+    );
   }
 
   Future<void> signOut() async {
     await _supabaseAuth.signOut();
   }
 
-  String? get currentUserId => _supabaseAuth.currentUser?.id;
+  Future<String?> get currentUserId async {
+    return await _supabaseAuth.currentUserId;
+  }
 
-  bool get isSignedIn => _supabaseAuth.currentSession != null;
+  Future<bool> get isSignedIn async {
+    return await _supabaseAuth.isSignedIn;
+  }
 
   // -------------------------------------------------------
   // Profile
@@ -67,7 +82,7 @@ class ProfileService {
   // Wallet
   // -------------------------------------------------------
 
-  Future<List<TransactionModel>> fetchTransactions(String userId) async {
+  Future<List<Map<String, dynamic>>> fetchTransactions(String userId) async {
     return await _supabaseAuth.fetchTransactions(userId);
   }
 
@@ -76,15 +91,16 @@ class ProfileService {
   }
 
   // -------------------------------------------------------
-  // Backend API calls (still use ApiService)
+  // Device check (Android device-first flow)
   // -------------------------------------------------------
 
   Future<Map<String, dynamic>> getAccountByDevice(String deviceId) async {
-    return await ApiService.post(
-      "/api/account/by-device",
-      body: {"device_id": deviceId},
-    );
+    return await _supabaseAuth.checkDevice(deviceId);
   }
+
+  // -------------------------------------------------------
+  // Samples (backend API)
+  // -------------------------------------------------------
 
   Future<int> getDeviceSamples(String deviceId) async {
     final res = await ApiService.get(
