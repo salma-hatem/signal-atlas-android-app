@@ -10,30 +10,32 @@ class ProfileService {
   // Auth
   // -------------------------------------------------------
 
-  Future<void> signUp({
+  Future<String?> signUp({
     required String email,
     required String password,
     required String username,
     String? deviceId,
   }) async {
-    await _supabaseAuth.signUp(
+    final result = await _supabaseAuth.signUp(
       email: email,
       password: password,
       username: username,
       deviceId: deviceId,
     );
+    return result.userId;
   }
 
-  Future<void> signIn({
+  Future<String?> signIn({
     required String email,
     required String password,
     String? deviceId,
   }) async {
-    await _supabaseAuth.signIn(
+    final result = await _supabaseAuth.signIn(
       email: email,
       password: password,
       deviceId: deviceId,
     );
+    return result.userId;
   }
 
   Future<void> signOut() async {

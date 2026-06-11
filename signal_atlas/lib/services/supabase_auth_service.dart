@@ -97,7 +97,8 @@ class SupabaseAuthService {
     try {
       final data = await ApiService.get('/api/users/me', auth: true);
       return data['id'] as String?;
-    } catch (_) {
+    } catch (e) {
+      debugPrint('currentUserId error: $e');
       return null;
     }
   }

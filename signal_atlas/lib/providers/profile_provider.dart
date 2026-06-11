@@ -92,14 +92,12 @@ class ProfileProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      await _service.signUp(
+      final userId = await _service.signUp(
         email: email,
         password: password,
         username: username,
         deviceId: _deviceId,
       );
-
-      final userId = await _service.currentUserId;
       if (userId == null) {
         _createAccountError = "Sign up succeeded but no user ID returned";
         return;
@@ -141,13 +139,11 @@ class ProfileProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      await _service.signIn(
+      final userId = await _service.signIn(
         email: email,
         password: password,
         deviceId: _deviceId,
       );
-
-      final userId = await _service.currentUserId;
       if (userId == null) {
         _createAccountError = "Sign in succeeded but no user ID returned";
         return;
