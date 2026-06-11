@@ -240,7 +240,7 @@ class _CoverageRequestDetailsPageState extends State<CoverageRequestDetailsPage>
         Row(
           children: [
             Text(
-              request.rewardAmount.toStringAsFixed(0),
+              request.rewardAmount.toStringAsFixed(2),
 
               style:
               textTheme.headlineMedium?.copyWith(
@@ -701,7 +701,7 @@ class _CoverageRequestDetailsPageState extends State<CoverageRequestDetailsPage>
     return Column(
       children: [
         Text(
-          value.toStringAsFixed(0),
+          value.toStringAsFixed(2),
           style: textTheme.titleSmall?.copyWith(
             fontWeight: FontWeight.w700,
           ),
@@ -770,7 +770,7 @@ class _CoverageRequestDetailsPageState extends State<CoverageRequestDetailsPage>
                   const SizedBox(width: 12),
 
                   Text(
-                    "${contribution.toStringAsFixed(1)} units",
+                    "${contribution.toStringAsFixed(2)} units",
 
                     style: textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.w700,

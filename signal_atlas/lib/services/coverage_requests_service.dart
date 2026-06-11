@@ -106,6 +106,7 @@ class CoverageRequestsService {
       query: {
         "device_id": deviceId,
       },
+        auth: true,
     );
 
     return (

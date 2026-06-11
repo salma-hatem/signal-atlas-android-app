@@ -44,7 +44,7 @@ class CoverageRequestDetail {
       id: json['id'],
       title: json['title'],
       description: json['description'] ?? '',
-      createdBy: json['created_by'],
+      createdBy: json['created_by_display'],
 
       city: json['city'],
       country: json['country'],
