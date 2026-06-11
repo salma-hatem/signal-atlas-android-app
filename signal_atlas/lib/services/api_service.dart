@@ -10,6 +10,7 @@ class ApiService {
   static const _apiKey = ApiConfig.apiKey;
   static const _tokenKey = 'signal_atlas_access_token';
   static const _refreshTokenKey = 'signal_atlas_refresh_token';
+  static const _userIdKey = 'signal_atlas_user_id';
 
   static Future<Map<String, String>> _headers({bool auth = false}) async {
     final headers = <String, String>{
@@ -143,6 +144,21 @@ class ApiService {
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString(_tokenKey);
     return token != null && token.isNotEmpty;
+  }
+
+  static Future<void> storeUserId(String userId) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_userIdKey, userId);
+  }
+
+  static Future<String?> getUserId() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_userIdKey);
+  }
+
+  static Future<void> removeUserId() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_userIdKey);
   }
 
   // Convenience methods

@@ -43,6 +43,7 @@ class SupabaseAuthService {
     final userId = data['user']['id'] as String;
 
     await ApiService.storeTokens(accessToken, refreshToken);
+    await ApiService.storeUserId(userId);
 
     return AuthResult(
       accessToken: accessToken,
@@ -72,6 +73,7 @@ class SupabaseAuthService {
     final userId = data['user']['id'] as String;
 
     await ApiService.storeTokens(accessToken, refreshToken);
+    await ApiService.storeUserId(userId);
 
     return AuthResult(
       accessToken: accessToken,
@@ -88,15 +90,23 @@ class SupabaseAuthService {
       // Ignore errors on logout
     }
     await ApiService.clearTokens();
+    await ApiService.removeUserId();
   }
 
   Future<String?> get currentUserId async {
+    final userId = await ApiService.getUserId();
+    if (userId != null) return userId;
+
     final authenticated = await ApiService.isAuthenticated();
     if (!authenticated) return null;
 
     try {
       final data = await ApiService.get('/api/users/me', auth: true);
-      return data['id'] as String?;
+      final remoteId = data['id'] as String?;
+      if (remoteId != null) {
+        await ApiService.storeUserId(remoteId);
+      }
+      return remoteId;
     } catch (e) {
       debugPrint('currentUserId error: $e');
       return null;
