@@ -264,7 +264,7 @@ class _ProfilePageState extends State<ProfilePage> {
                       )
                     else
                       ...transactions!.map((tx) {
-                      final amount = (tx.amount as num).toDouble();
+                      final amount = (tx['amount'] as num).toDouble();
                       final isPositive = amount >= 0;
 
                       return Container(
@@ -300,13 +300,13 @@ class _ProfilePageState extends State<ProfilePage> {
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
                                   Text(
-                                    tx.title,
+                                    tx['title'],
                                   ),
 
                                   const SizedBox(height: 2),
 
                                   Text(
-                                    tx.date,
+                                    tx['date'],
                                     style: theme.textTheme.bodySmall?.copyWith(
                                       color: colorScheme.outline,
                                     ),
