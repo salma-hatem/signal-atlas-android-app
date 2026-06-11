@@ -156,6 +156,10 @@ class CoverageRequestsProvider extends ChangeNotifier {
     try {
       _userContribution =
       await _service.fetchUserContribution(id);
+    } catch (e) {
+      debugPrint("Failed to load contribution: $e");
+
+      _userContribution = 0;
     } finally {
       _isContributionLoading = false;
 

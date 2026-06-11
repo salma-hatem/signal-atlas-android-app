@@ -1,5 +1,6 @@
 import '../models/coverage_request.dart';
 import '../models/coverage_request_detailed.dart';
+import '../utilities/get_device_id.dart';
 import 'api_service.dart';
 import 'device_service.dart';
 
@@ -94,10 +95,12 @@ class CoverageRequestsService {
       int requestId,
       ) async {
 
-    final deviceId = DeviceService.deviceId.value;
+    String deviceId;
 
-    if (deviceId == null) {
-      return 0;
+    if (DeviceService.deviceId.value != null) {
+      deviceId = DeviceService.deviceId.value!;
+    } else {
+      deviceId = await waitForDeviceId();
     }
 
     final response = await ApiService.get(
@@ -108,8 +111,11 @@ class CoverageRequestsService {
       },
     );
 
-    return (
-        response["density_contribution"] ?? 0
-    ).toDouble();
+    final raw = response["density_contribution"];
+
+    if (raw is num) return raw.toDouble();
+    if (raw is String) return double.tryParse(raw) ?? 0;
+
+    return 0;
   }
 }
