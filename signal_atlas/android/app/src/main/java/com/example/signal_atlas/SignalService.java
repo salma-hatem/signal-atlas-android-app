@@ -49,14 +49,19 @@ public class SignalService extends Service {
         telephonyManager = (TelephonyManager) getSystemService(Context.TELEPHONY_SERVICE);
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
 
-        startLocationTracking();
     }
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-
         createNotificationChannel();
-        startForeground(1, createNotification());
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            // Android 10+ requires declaring the type
+            startForeground(1, createNotification(),
+                    android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION);
+        } else {
+            startForeground(1, createNotification());
+        }
 
         startLocationTracking();
         startCollecting();
