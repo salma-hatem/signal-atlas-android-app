@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:intl/intl.dart';
 import 'package:signal_atlas/screens/profile/widgets/create_account_view.dart';
 
 import '../../models/device_model.dart';
@@ -300,13 +301,15 @@ class _ProfilePageState extends State<ProfilePage> {
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
                                   Text(
-                                    tx['title'],
+                                    tx['transaction_type'],
+                                    style: theme.textTheme.titleMedium
                                   ),
 
                                   const SizedBox(height: 2),
 
                                   Text(
-                                    tx['date'],
+                                    DateFormat('dd MMM yyyy, hh:mm a')
+                                        .format(DateTime.parse(tx['created_at'])),
                                     style: theme.textTheme.bodySmall?.copyWith(
                                       color: colorScheme.outline,
                                     ),
