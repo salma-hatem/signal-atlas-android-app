@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:signal_atlas/models/sessions.dart';
-import 'package:signal_atlas/widgets/table.dart';
+import 'package:signal_atlas/widgets/sessions_table.dart';
 import '../../utilities/theme/app_colors.dart';
 import '../../widgets/back_page_wrapper.dart';
 import '../../widgets/custom_overlay_tooltip.dart';

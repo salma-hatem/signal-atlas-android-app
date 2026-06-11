@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import '../../providers/coverage_requests_provider.dart';
 import '../../services/network_readings_service.dart';
 import '../../widgets/page_wrapper.dart';
+import '../../widgets/filter_chip.dart';
 import 'coverage_request_details_page.dart';
 import 'widgets/coverage_request_card.dart';
 
@@ -147,62 +148,34 @@ class _CoverageRequestsPageState extends State<CoverageRequestsPage> {
                 final isSelected =
                 selectedFilters.contains(filter);
 
-                return FilterChip(
-                  label: Text(filter),
+                return StyledFilterChip(
+                  label: filter,
                   selected: isSelected,
                   onSelected: (selected) async {
-
                     if (selected) {
                       selectedFilters.add(filter);
                     } else {
                       selectedFilters.remove(filter);
                     }
 
-                    // handle nearby loading
                     if (filter == "Nearby") {
-
                       if (selected) {
-
                         final readingService = context.read<NetworkReadingsService>();
-
                         final latestReading = readingService.latestReading;
-                        if (latestReading == null) {
-                          return;
-                        }
 
-                        final latitude = latestReading.latitude;
-                        final longitude = latestReading.longitude;
+                        if (latestReading == null) return;
 
                         await provider.loadNearbyRequests(
-                          latitude: latitude,
-                          longitude: longitude,
+                          latitude: latestReading.latitude,
+                          longitude: latestReading.longitude,
                         );
-
                       } else {
-
                         provider.clearNearbyRequests();
                       }
                     }
 
                     setState(() {});
                   },
-                  selectedColor: colorScheme.primary.withAlpha(30),
-                  backgroundColor: colorScheme.surface,
-                  checkmarkColor: colorScheme.primary,
-                  side: BorderSide(
-                    color: isSelected
-                        ? colorScheme.primary
-                        : colorScheme.outline.withAlpha(50),
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  labelStyle: TextStyle(
-                    color: isSelected
-                        ? colorScheme.primary
-                        : colorScheme.onSurface,
-                    fontWeight: FontWeight.w600,
-                  ),
                 );
               },
             ),

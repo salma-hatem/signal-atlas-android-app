@@ -1,11 +1,9 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import '../models/sessions.dart';
 import '../services/sessions_service.dart';
 import '../services/api_service.dart';
-import '../services/device_service.dart';
 import '../services/logging_manager.dart';
+import '../utilities/get_device_id.dart';
 
 class SessionProvider extends ChangeNotifier {
   final SessionsService _service;
@@ -37,7 +35,7 @@ class SessionProvider extends ChangeNotifier {
   // Get samples on server
   Future<void> getSamplesServer() async {
     try {
-      final deviceId = await _waitForDeviceId();
+      final deviceId = await waitForDeviceId();
       final res = await ApiService.get(
         "/api/mobile/users_samples",
         query: {"device_id": deviceId},
@@ -55,7 +53,7 @@ class SessionProvider extends ChangeNotifier {
     await _service.deleteNonRequestSessions();
 
     try {
-      final deviceId = await _waitForDeviceId();
+      final deviceId = await waitForDeviceId();
       await ApiService.delete(
         "/api/mobile/users_samples",
         query: {
@@ -73,27 +71,6 @@ class SessionProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-
-  Future<String> _waitForDeviceId() async {
-    if (DeviceService.deviceId.value != null) {
-      return DeviceService.deviceId.value!;
-    }
-
-    final completer = Completer<String>();
-
-    late VoidCallback listener;
-    listener = () {
-      final id = DeviceService.deviceId.value;
-      if (id != null) {
-        DeviceService.deviceId.removeListener(listener);
-        completer.complete(id);
-      }
-    };
-
-    DeviceService.deviceId.addListener(listener);
-
-    return completer.future;
-  }
   // ------------------------------------------------
   // Live session
   // ------------------------------------------------

@@ -19,6 +19,7 @@ class CustomNavigationBar extends StatelessWidget {
       {'icon': Icons.analytics_outlined, 'label': 'Dashboard'},
       {'icon': Icons.storage, 'label': 'Data Hub'},
       {'icon': Icons.request_page_outlined, 'label': 'Requests'},
+      {'icon': Icons.person_outline_rounded, 'label': 'Profile'},
     ];
 
     return Material(

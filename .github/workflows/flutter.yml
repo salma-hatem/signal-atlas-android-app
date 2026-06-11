@@ -50,8 +50,11 @@ jobs:
       - name: Rename APK
         run: |
           mkdir -p release
+
+          BRANCH_NAME=$(echo "${{ github.ref_name }}" | tr '/' '-')
+
           cp signal_atlas/build/app/outputs/flutter-apk/app-release.apk \
-             release/app-release-${{ github.ref_name }}.apk
+            release/app-release-${BRANCH_NAME}.apk
 
       # CREATE GITHUB RELEASE
       - name: Create Release
@@ -66,6 +69,6 @@ jobs:
             Commit: ${{ github.sha }}
 
             Debug/CI build
-          files: release/app-release-${{ github.ref_name }}.apk
+          files: release/*.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
