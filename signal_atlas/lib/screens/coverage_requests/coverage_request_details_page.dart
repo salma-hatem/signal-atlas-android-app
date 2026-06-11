@@ -10,8 +10,10 @@ import '../../models/coverage_request_detailed.dart';
 import '../../providers/coverage_requests_provider.dart';
 import '../../providers/logging_provider.dart';
 import '../../providers/sessions_provider.dart';
+import '../../providers/navigation_provider.dart';
 import '../../services/coverage_area_tracking_service.dart';
 import '../../services/network_readings_service.dart';
+import '../../services/api_service.dart';
 import '../../utilities/speed_format.dart';
 import '../../utilities/theme/app_colors.dart';
 import '../../widgets/back_page_wrapper.dart';
@@ -527,6 +529,15 @@ class _CoverageRequestDetailsPageState extends State<CoverageRequestDetailsPage>
                   onTap: (!isRequestOpen || isStopping)
                       ? null
                       : () async {
+
+                    final isAuthenticated = await ApiService.isAuthenticated();
+
+                    if (!isAuthenticated) {
+                      if (!mounted) return;
+                      _showLoginPrompt(context);
+                      return;
+                    }
+
                     if (anotherSessionActive) {
                       showCustomSnackBar(
                         context,
@@ -804,6 +815,66 @@ class _CoverageRequestDetailsPageState extends State<CoverageRequestDetailsPage>
               ),
         ),
       ],
+    );
+  }
+
+  void _showLoginPrompt(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) {
+        final colorScheme = Theme.of(ctx).colorScheme;
+        final textTheme = Theme.of(ctx).textTheme;
+
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(24, 20, 24, 36),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 40, height: 4,
+                decoration: BoxDecoration(
+                  color: colorScheme.outline.withAlpha(80),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(height: 20),
+              Icon(Icons.lock_outline_rounded, size: 40, color: colorScheme.primary),
+              const SizedBox(height: 12),
+              Text(
+                "Login Required",
+                style: textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                "You need to be logged in to contribute to coverage requests.",
+                textAlign: TextAlign.center,
+                style: textTheme.bodyMedium?.copyWith(color: colorScheme.onSurfaceVariant),
+              ),
+              const SizedBox(height: 24),
+              FilledButton.icon(
+                onPressed: () {
+                  Navigator.of(ctx).pop(); // close sheet
+                  Navigator.of(context).popUntil((route) => route.isFirst);
+                  context.read<NavigationProvider>().navigateTo(4);
+                },
+                icon: const Icon(Icons.login_rounded),
+                label: const Text("Go to Login"),
+                style: FilledButton.styleFrom(
+                  minimumSize: const Size.fromHeight(48),
+                ),
+              ),
+              const SizedBox(height: 10),
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(),
+                child: const Text("Cancel"),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 
