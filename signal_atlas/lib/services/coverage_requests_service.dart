@@ -109,6 +109,7 @@ class CoverageRequestsService {
       query: {
         "device_id": deviceId,
       },
+        auth: true,
     );
 
     final raw = response["density_contribution"];
