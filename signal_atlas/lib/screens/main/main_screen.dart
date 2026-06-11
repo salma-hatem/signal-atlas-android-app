@@ -1,20 +1,21 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../live_data/live_data_screen.dart';
 import '../dashboard/dashboard_screen.dart';
 import '../data_hub/data_hub_screen.dart';
 import '../profile/profile_screen.dart';
 import '../coverage_requests/coverage_requests_screen.dart';
 import 'package:signal_atlas/widgets/navigation_bar.dart';
+import 'package:signal_atlas/providers/navigation_provider.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
 
   @override
-  _MainScreenState createState() => _MainScreenState();
+  State<MainScreen> createState() => _MainScreenState();
 }
 
 class _MainScreenState extends State<MainScreen> {
-  int _currentIndex = 0;
   final PageController _pageController = PageController();
 
   final List<Widget> _screens = [
@@ -26,6 +27,14 @@ class _MainScreenState extends State<MainScreen> {
   ];
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<NavigationProvider>().attachController(_pageController);
+    });
+  }
+
+  @override
   void dispose() {
     _pageController.dispose();
     super.dispose();
@@ -33,20 +42,25 @@ class _MainScreenState extends State<MainScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final nav = context.watch<NavigationProvider>();
+
     return Scaffold(
       body: PageView(
         controller: _pageController,
+        // Update nav bar when swiping
         onPageChanged: (index) {
-          // Update nav bar when swiping
-          setState(() => _currentIndex = index);
+          nav.setIndex(index);
         },
+
         children: _screens,
       ),
+
       bottomNavigationBar: CustomNavigationBar(
-        currentIndex: _currentIndex,
+        currentIndex: nav.index,
+
         onTap: (index) {
           // Update nav bar and animate PageView
-          setState(() => _currentIndex = index);
+          nav.setIndex(index);
           _pageController.animateToPage(
             index,
             duration: const Duration(milliseconds: 300),

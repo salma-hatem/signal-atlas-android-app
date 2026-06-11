@@ -3,6 +3,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 import 'package:provider/provider.dart';
 import 'package:signal_atlas/providers/coverage_requests_provider.dart';
+import 'package:signal_atlas/providers/navigation_provider.dart';
 import 'package:signal_atlas/providers/profile_provider.dart';
 import 'package:signal_atlas/services/device_service.dart';
 import 'package:signal_atlas/services/dashboard_service.dart';
@@ -71,6 +72,7 @@ void main() async {
         ChangeNotifierProvider(create: (_) => ProfileProvider(
           ProfileService(supabaseAuthService),
         )..initialize()),
+        ChangeNotifierProvider(create: (_) => NavigationProvider()),
       ],
       child: App(platformService: platformService),
     ),
