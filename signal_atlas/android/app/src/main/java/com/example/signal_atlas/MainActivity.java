@@ -10,6 +10,7 @@ import androidx.annotation.NonNull;
 import io.flutter.embedding.android.FlutterActivity;
 import io.flutter.embedding.engine.FlutterEngine;
 import io.flutter.plugin.common.MethodChannel;
+import android.os.PowerManager;
 
 public class MainActivity extends FlutterActivity {
 
@@ -60,12 +61,30 @@ public class MainActivity extends FlutterActivity {
 
     private void requestBatteryOptimizationDisable() {
         try {
-            Intent intent = new Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS);
-            intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-            startActivity(intent);
+            String packageName = getPackageName();
+            PowerManager pm = (PowerManager) getSystemService(POWER_SERVICE);
 
+            Intent intent;
+            if (pm != null && !pm.isIgnoringBatteryOptimizations(packageName)) {
+                // Direct prompt — requires REQUEST_IGNORE_BATTERY_OPTIMIZATIONS in manifest
+                intent = new Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS);
+                intent.setData(android.net.Uri.parse("package:" + packageName));
+            } else {
+                // Already whitelisted, skip to callback immediately
+                if (sharedChannel != null) {
+                    sharedChannel.invokeMethod("batterySettingsClosed", null);
+                }
+                return;
+            }
+
+            startActivity(intent);
             returnedFromBatterySettings = true;
-        } catch (Exception ignored) {}
+        } catch (Exception e) {
+            // Fallback: just proceed without it
+            if (sharedChannel != null) {
+                sharedChannel.invokeMethod("batterySettingsClosed", null);
+            }
+        }
     }
 
     @Override

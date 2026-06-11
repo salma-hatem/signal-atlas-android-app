@@ -48,7 +48,7 @@ void main() async {
   await locationService.start();
 
   platformService.init();
-  await platformService.startSetupFlow();
+  // await platformService.startSetupFlow();
 
   final supabaseAuthService = SupabaseAuthService();
 
@@ -72,7 +72,7 @@ void main() async {
           ProfileService(supabaseAuthService),
         )..initialize()),
       ],
-      child: const App(),
+      child: App(platformService: platformService),
     ),
   );
 }
